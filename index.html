@@ -15,8 +15,22 @@
         #app { width: 100%; max-width: 100%; height: 100%; max-height: 100vh; background-color: #1e1e1e; padding: 0; border: none; box-shadow: none; text-align: center; display: flex; flex-direction: column; position: relative; }
 
         /* Logo Placeholder */
-        .logo-placeholder { position: absolute; top: 15px; left: 15px; width: 100px; height: auto; z-index: 15; opacity: 0.8; }
+        .logo-placeholder { width: 100px; height: auto; z-index: 15; opacity: 0.8; margin: 0 auto 15px auto; }
         .logo-placeholder img { max-width: 100%; height: auto; display: block; }
+        .logo-fixed { position: absolute; top: 15px; left: 15px; }
+        
+        /* Video watermark */
+        #video-watermark {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            width: 60px;
+            height: auto;
+            z-index: 5;
+            opacity: 0.7;
+            pointer-events: none;
+            display: none;
+        }
 
         /* Panel Visibility & Layout */
         .panel { display: none; flex-direction: column; align-items: center; width: 100%; height: 100%; position: absolute; top: 0; left: 0; background-color: #1e1e1e; overflow-y: auto; padding: 20px; justify-content: center; }
@@ -89,11 +103,10 @@
 </head>
 <body>
     <div id="app">
-        <div class="logo-placeholder"><img src="./Asset 2.png" alt="your bar logo"></div>
-
         <!-- 1. Landing Panel -->
         <div id="panel-landing" class="panel active">
             <div class="panel-content-container">
+                <div class="logo-placeholder"><img src="./Asset 2.png" alt="your bar logo"></div>
                 <h4>best cocktail bar in adelaide 2024..</h4><br><br>
                 <p style="text-align: center;">follow the instructions and answer the questions to find something cool..</p>
                 <div style="margin: 15px 0; text-align: center;">
@@ -108,6 +121,7 @@
         <!-- 2. Quiz Panel -->
         <div id="panel-quiz" class="panel">
             <video id="camera-feed" playsinline autoplay muted style="display: none;"></video>
+            <img id="video-watermark" src="./Asset 2.png" alt="logo watermark">
             <div id="quiz-timer-overlay-container" style="display: none;">time: <span id="timer-display-no-video">0.0</span>s</div>
             <div id="quiz-content-overlay" style="display: none;">
                 <div class="quiz-overlay-top">
@@ -125,21 +139,10 @@
             </div>
         </div>
 
-        <!-- 3. Uploading Panel -->
-        <div id="panel-uploading" class="panel">
-             <div class="panel-content-container">
-                <h2>finishing up...</h2>
-                <p id="upload-panel-status" style="text-align:center;">please wait while your video uploads...</p>
-                <div id="upload-progress-container">
-                    <div id="upload-progress-bar"></div>
-                </div>
-                <p class="info-message">(this may take a moment)</p>
-             </div>
-        </div>
-
-        <!-- 4. Finish Panel -->
+        <!-- 3. Finish Panel -->
         <div id="panel-finish" class="panel">
             <div class="panel-content-container">
+                <div class="logo-placeholder logo-fixed"><img src="./Asset 2.png" alt="your bar logo"></div>
                 <h2>challenge complete!</h2>
                 <p>your final time is: <strong id="final-time">0.0</strong> seconds!</p>
                 <h3>top times</h3>
@@ -151,20 +154,28 @@
                 </div>
                 <p class="leaderboard-prompt">want to add your time to the leaderboard?</p>
                 <p id="video-email-incentive" class="info-message" style="display:none;">(we'll email a link to your recorded video!)</p>
+                
+                <div id="upload-status-container" style="width: 100%; margin-bottom: 10px;">
+                    <p id="upload-status" class="info-message" style="margin-bottom: 5px;"></p>
+                    <div id="upload-progress-container" style="display: none;">
+                        <div id="upload-progress-bar"></div>
+                    </div>
+                </div>
+                
                 <label for="user-name">name:</label>
                 <input type="text" id="user-name" placeholder="your name">
                 <label for="user-email">email:</label>
                 <input type="email" id="user-email" placeholder="your.email@example.com">
                 <button id="btn-join-leaderboard">join leaderboard</button>
-                <p id="upload-status" class="info-message" style="margin-top: 15px; font-weight: bold;"></p>
                 <p id="leaderboard-submit-status" class="info-message"></p>
                 <p class="info-message">(if not, simply close this page)</p>
             </div>
         </div>
 
-        <!-- 5. Final Leaderboard Panel -->
+        <!-- 4. Final Leaderboard Panel -->
         <div id="panel-final-leaderboard" class="panel">
              <div class="panel-content-container">
+                 <div class="logo-placeholder logo-fixed"><img src="./Asset 2.png" alt="your bar logo"></div>
                  <h2 id="final-message">you're on the leaderboard!</h2>
                  <p id="final-email-message" class="success-message" style="display:none;">check your email for the video link!</p>
                  <h3>top times</h3>
@@ -178,9 +189,10 @@
               </div>
         </div>
 
-        <!-- 6. Error Panel -->
+        <!-- 5. Error Panel -->
         <div id="panel-error" class="panel">
             <div class="panel-content-container">
+                 <div class="logo-placeholder logo-fixed"><img src="./Asset 2.png" alt="your bar logo"></div>
                  <h2>oops! something went wrong.</h2>
                  <p id="error-details" style="text-align:center;">an error occurred.</p>
                  <button id="btn-error-back">go back to start</button>
@@ -196,7 +208,7 @@
          const SUPABASE_URL = "https://hdagjajchjxsyytdlqzi.supabase.co";
          const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhkYWdqYWpjaGp4c3l5dGRscXppIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDMyOTE3NjEsImV4cCI6MjA1ODg2Nzc2MX0.8A5dhEKfDbUOeouvp_e32rMR-NUwnUjBTuP-8tEtsYU";
          const LEADERBOARD_LIMIT = 10;
-         const STORAGE_BUCKET_NAME = "race_recordings";
+         const STORAGE_BUCKET_NAME = "racerecordings";
          const EMAIL_FUNCTION_NAME = 'send-video-link'; // <<< Your Supabase Edge Function name
 
         // --- QUIZ CONTENT ---
@@ -211,11 +223,18 @@
          *        DOM ELEMENT REFERENCES         *
          *****************************************/
         const app = document.getElementById('app');
-        const panels = { landing: document.getElementById('panel-landing'), quiz: document.getElementById('panel-quiz'), uploading: document.getElementById('panel-uploading'), finish: document.getElementById('panel-finish'), finalLeaderboard: document.getElementById('panel-final-leaderboard'), error: document.getElementById('panel-error') };
+        const panels = { 
+            landing: document.getElementById('panel-landing'), 
+            quiz: document.getElementById('panel-quiz'), 
+            finish: document.getElementById('panel-finish'), 
+            finalLeaderboard: document.getElementById('panel-final-leaderboard'), 
+            error: document.getElementById('panel-error') 
+        };
         const btnStartQuiz = document.getElementById('btn-start-quiz');
         const recordCheckbox = document.getElementById('record-checkbox');
         const recordWarning = document.getElementById('record-warning');
         const cameraFeed = document.getElementById('camera-feed');
+        const videoWatermark = document.getElementById('video-watermark');
         const quizContentOverlay = document.getElementById('quiz-content-overlay');
         const quizTimerDisplay = document.getElementById('timer-display'); // In overlay
         const quizTimerDisplayNoVideo = document.getElementById('timer-display-no-video'); // In non-video mode
@@ -225,7 +244,7 @@
         const quizAnswerInput = document.getElementById('quiz-answer-input');
         const quizErrorMsg = document.getElementById('quiz-error');
         const quizSubmitBtn = document.getElementById('quiz-submit-answer');
-        const uploadPanelStatus = document.getElementById('upload-panel-status');
+        const uploadProgressContainer = document.getElementById('upload-progress-container');
         const uploadProgressBar = document.getElementById('upload-progress-bar');
         const finalTimeDisplay = document.getElementById('final-time');
         const videoEmailIncentive = document.getElementById('video-email-incentive');
@@ -336,6 +355,7 @@
              quizTimerDisplay.textContent = '0.0'; quizTimerDisplayNoVideo.textContent = '0.0';
              if (timerInterval) clearInterval(timerInterval); timerInterval = null; startTime = null;
              uploadStatus.textContent = ''; uploadProgressBar.style.width = '0%'; // Reset progress bar
+             uploadProgressContainer.style.display = 'none';
              recordingIndicator.style.display = isRecordingActive ? 'block' : 'none';
 
              const quizPanel = panels.quiz;
@@ -344,12 +364,14 @@
                  quizPanel.classList.remove('no-video'); quizPanel.classList.add('video-active');
                  quizContentOverlay.style.display = 'flex';
                  cameraFeed.style.display = 'block';
+                 videoWatermark.style.display = 'block'; // Show watermark for recording
                  timerContainerNoVideo.style.display = 'none';
                  if(cameraFeed.srcObject && cameraFeed.paused) { cameraFeed.play().catch(e => console.warn("Video play failed:", e)); }
              } else {
                  quizPanel.classList.add('no-video'); quizPanel.classList.remove('video-active');
                  quizContentOverlay.style.display = 'flex';
                  cameraFeed.style.display = 'none';
+                 videoWatermark.style.display = 'none'; // Hide watermark for non-video mode
                  timerContainerNoVideo.style.display = 'block';
              }
 
@@ -402,15 +424,17 @@
                 mediaRecorder.stop(); // Triggers onstop
                 isRecordingActive = false;
                 recordingIndicator.style.display = 'none';
-                showPanel('uploading'); // Show uploading panel
-                uploadPanelStatus.textContent = 'processing video...';
-                uploadProgressBar.style.width = '0%';
-                uploadProgressBar.style.animationPlayState = 'paused'; // Ensure it resets visually
+                videoWatermark.style.display = 'none'; // Hide watermark when stopping recording
             } else {
                 console.log("Not recording or already stopped.");
-                if (mediaStream) { stopMediaStreamTracks(); if(cameraFeed) cameraFeed.style.display = 'none'; }
-                showBlurredLeaderboard(); // Go directly to results
             }
+            
+            if (mediaStream) { 
+                stopMediaStreamTracks(); 
+                if(cameraFeed) cameraFeed.style.display = 'none'; 
+            }
+            
+            showBlurredLeaderboard(); // Display the result screen
         }
 
         /*****************************************
@@ -420,7 +444,10 @@
              console.log("requesting media permissions for feed...");
              if (mediaStream) { stopMediaStreamTracks(); }
              try {
-                 mediaStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: true });
+                 mediaStream = await navigator.mediaDevices.getUserMedia({ 
+                     video: { facingMode: "user" }, // Use front-facing camera by default
+                     audio: true 
+                 });
                  console.log("media permissions granted.");
                  cameraFeed.srcObject = mediaStream;
                  // Don't show video here, startQuizGameplay will
@@ -447,18 +474,17 @@
 
         function handleRecordingStop() {
              console.log("recording stopped. chunks:", recordedChunks.length);
-             uploadPanelStatus.textContent = 'preparing upload...'; // Update uploading panel
              if (recordedChunks.length > 0) {
                  const mimeType = mediaRecorder?.mimeType || recordedChunks[0]?.type || 'video/webm';
                  videoBlob = new Blob(recordedChunks, { type: mimeType });
-                 uploadRecording(); // Start upload, which keeps upload panel visible
+                 showBlurredLeaderboard(); // Show the result screen first
+                 uploadRecording(); // Then start upload in the background, showing progress on the finish panel
              } else {
                  console.warn("no data recorded."); videoBlob = null;
                  stopRecordingCleanup(); // Cleanup stream
                  showBlurredLeaderboard(); // Skip upload, go to results
              }
              recordedChunks = []; // Clear chunks after creating blob or deciding not to upload
-             // Don't call stopRecordingCleanup or showBlurredLeaderboard here if upload started
          }
 
         function stopRecordingCleanup() {
@@ -467,6 +493,7 @@
              stopMediaStreamTracks();
              if(cameraFeed) { cameraFeed.style.display = 'none'; cameraFeed.srcObject = null; }
              recordingIndicator.style.display = 'none';
+             videoWatermark.style.display = 'none'; // Hide watermark
              isRecordingActive = false; mediaRecorder = null;
              // recordedChunks already cleared
              // Don't clear videoBlob here
@@ -487,12 +514,16 @@
             if (!STORAGE_BUCKET_NAME) { console.error("storage bucket name not configured."); showErrorPanel("upload error: configuration missing."); stopRecordingCleanup(); return; }
 
             uploadInProgress = true;
-            uploadPanelStatus.textContent = `uploading video (size: ${(videoBlob.size / 1024 / 1024).toFixed(1)} mb)...`;
+            
+            // Show the progress bar on the finish panel
+            uploadProgressContainer.style.display = 'block';
             uploadProgressBar.style.width = '0%'; // Start at 0
             uploadProgressBar.style.animationPlayState = 'paused'; // Pause indeterminate animation
 
-            // Set status in the finish panel (will be shown later)
-            uploadStatus.textContent = "uploading..."; uploadStatus.className = 'info-message'; uploadStatus.style.display = 'block';
+            // Set status in the finish panel
+            uploadStatus.textContent = "uploading video..."; 
+            uploadStatus.className = 'info-message'; 
+            uploadStatus.style.display = 'block';
             btnJoinLeaderboard.disabled = true; // Disable join button on finish panel
 
             const fileName = `race-${Date.now()}.webm`;
@@ -512,11 +543,11 @@
                 xhr.upload.onprogress = (event) => {
                     if (event.lengthComputable) {
                         const percentComplete = Math.round((event.loaded / event.total) * 100);
-                        uploadPanelStatus.textContent = `uploading video (${percentComplete}%)...`;
+                        uploadStatus.textContent = `uploading video (${percentComplete}%)...`;
                         uploadProgressBar.style.width = `${percentComplete}%`; // Update progress bar width
                     } else {
                         // Cannot compute progress, show indeterminate state
-                        uploadPanelStatus.textContent = `uploading video...`;
+                        uploadStatus.textContent = `uploading video...`;
                         uploadProgressBar.style.width = '100%'; // Fill bar
                         uploadProgressBar.style.animationPlayState = 'running'; // Animate stripes
                     }
@@ -527,25 +558,29 @@
                     stopRecordingCleanup(); // Cleanup stream etc. AFTER upload attempt
                     if (xhr.status >= 200 && xhr.status < 300) {
                         console.log("upload successful (xhr):", xhr.responseText);
-                        uploadStatus.textContent = "video upload complete!"; uploadStatus.className = 'success-message';
+                        uploadStatus.textContent = "video upload complete!"; 
+                        uploadStatus.className = 'success-message';
+                        videoEmailIncentive.style.display = 'block'; // Remind them they'll get the video
                     } else {
                         console.error("upload failed (xhr):", xhr.status, xhr.responseText);
                         let errorMsg = `http status ${xhr.status}`; try { errorMsg = JSON.parse(xhr.responseText).message || errorMsg; } catch(e){}
-                        uploadStatus.textContent = `video upload failed: ${errorMsg.substring(0,50)}`; uploadStatus.className = 'error-message';
+                        uploadStatus.textContent = `video upload failed: ${errorMsg.substring(0,50)}`; 
+                        uploadStatus.className = 'error-message';
                         lastUploadedFilePath = null; // Clear path on failure
                     }
+                    uploadProgressContainer.style.display = 'none';
                     btnJoinLeaderboard.disabled = false; // Re-enable button on finish panel
-                    showBlurredLeaderboard(); // Show finish panel with final upload status
                 };
 
                 xhr.onerror = () => {
                     uploadInProgress = false; // Upload attempt finished
                     stopRecordingCleanup(); // Cleanup stream etc. AFTER upload attempt
                     console.error("upload failed (xhr network error)");
-                    uploadStatus.textContent = `video upload failed: network error`; uploadStatus.className = 'error-message';
+                    uploadStatus.textContent = `video upload failed: network error`; 
+                    uploadStatus.className = 'error-message';
                     lastUploadedFilePath = null;
+                    uploadProgressContainer.style.display = 'none';
                     btnJoinLeaderboard.disabled = false; // Re-enable button on finish panel
-                    showBlurredLeaderboard(); // Show finish panel with final upload status
                 };
 
                 xhr.send(videoBlob);
@@ -553,9 +588,13 @@
 
             } catch (error) {
                 console.error("upload setup failed:", error);
-                uploadStatus.textContent = `video upload failed: ${error.message.substring(0,50)}`; uploadStatus.className = 'error-message';
-                lastUploadedFilePath = null; uploadInProgress = false; btnJoinLeaderboard.disabled = false;
-                stopRecordingCleanup(); showBlurredLeaderboard();
+                uploadStatus.textContent = `video upload failed: ${error.message.substring(0,50)}`; 
+                uploadStatus.className = 'error-message';
+                lastUploadedFilePath = null; 
+                uploadInProgress = false; 
+                uploadProgressContainer.style.display = 'none';
+                btnJoinLeaderboard.disabled = false;
+                stopRecordingCleanup();
             }
         }
 
@@ -595,8 +634,13 @@
         async function showBlurredLeaderboard() {
              if (!supabaseClient) { showErrorPanel("database connection lost."); return; }
              leaderboardBodyBlurred.innerHTML = '<tr><td colspan="3" style="text-align:center;">loading scores...</td></tr>';
-             videoEmailIncentive.style.display = userWantsToRecord ? 'block' : 'none';
-             showPanel('finish'); // Show AFTER potentially setting incentive visibility
+             
+             // Only show video incentive if there's a recording but hide until upload completes
+             if (userWantsToRecord && !videoBlob) {
+                videoEmailIncentive.style.display = 'none';
+             }
+             
+             showPanel('finish'); // Show finish panel
 
              try {
                  let { data, error } = await supabaseClient.from('leaderboard').select('name, time_in_seconds').order('time_in_seconds', { ascending: true }).limit(LEADERBOARD_LIMIT);
@@ -617,15 +661,36 @@
         }
 
         function handleJoinLeaderboard() {
-             if (uploadInProgress) { leaderboardSubmitStatus.textContent = "please wait for video upload..."; return; }
-             const name = userNameInput.value.trim(); const email = userEmailInput.value.trim();
-             if (!name || !email || !/^\S+@\S+\.\S+$/.test(email)) { leaderboardSubmitStatus.textContent = "valid name and email required."; return; }
+             if (uploadInProgress) { 
+                leaderboardSubmitStatus.textContent = "please wait for video upload to complete..."; 
+                leaderboardSubmitStatus.className = "info-message";
+                return; 
+             }
+             const name = userNameInput.value.trim(); 
+             const email = userEmailInput.value.trim();
+             
+             if (!name) {
+                leaderboardSubmitStatus.textContent = "please enter your name";
+                leaderboardSubmitStatus.className = "error-message";
+                userNameInput.focus();
+                return;
+             }
+             
+             if (!email || !/^\S+@\S+\.\S+$/.test(email)) { 
+                leaderboardSubmitStatus.textContent = "please enter a valid email address"; 
+                leaderboardSubmitStatus.className = "error-message";
+                userEmailInput.focus();
+                return; 
+             }
+             
              saveLeaderboardEntry(name, email, finalTimeSeconds, leaderboardSubmitStatus, btnJoinLeaderboard);
         }
 
         async function saveLeaderboardEntry(name, email, time, statusElement, joinButton) {
              if (!supabaseClient) { showErrorPanel("database connection lost."); return; }
-             statusElement.textContent = "saving score..."; joinButton.disabled = true;
+             statusElement.textContent = "saving score..."; 
+             statusElement.className = "info-message";
+             joinButton.disabled = true;
              let entryId = null;
              try {
                  const { data: leaderboardData, error: leaderboardError } = await supabaseClient.from('leaderboard').insert([{ name, email, time_in_seconds: time }]).select('id').single();
@@ -634,26 +699,38 @@
                  if (userWantsToRecord && lastUploadedFilePath) {
                      statusElement.textContent = "score saved, preparing video link...";
                      await invokeEmailVideoLinkFunction(lastUploadedFilePath, email, name, entryId);
-                 } else { statusElement.textContent = "score saved!"; }
+                 } else { 
+                     statusElement.textContent = "score saved!"; 
+                     statusElement.className = "success-message";
+                 }
                  showFinalLeaderboard(true);
              } catch (error) {
                  console.error("error saving leaderboard or triggering email:", error);
                  statusElement.textContent = `error saving: ${error.message.substring(0,50)}`;
+                 statusElement.className = "error-message";
                  joinButton.disabled = false;
              }
         }
 
         async function invokeEmailVideoLinkFunction(filePath, userEmail, userName, entryId) {
-            console.warn("--- SIMULATING EDGE FUNCTION CALL ---");
-            console.log(`Would invoke function '${EMAIL_FUNCTION_NAME}' with:`, { filePath, userEmail, userName, entryId });
-            console.warn("--- END SIMULATION ---");
-            // --- !!! Replace simulation with actual invocation !!! ---
-             try {
-                 const { data, error } = await supabaseClient.functions.invoke(EMAIL_FUNCTION_NAME, { body: { filePath, userEmail, userName, entryId } });
-                 if (error) { console.error(`Edge function invocation error (${EMAIL_FUNCTION_NAME}):`, error); leaderboardSubmitStatus.textContent += " (video email failed)"; }
-                 else { console.log(`Edge function (${EMAIL_FUNCTION_NAME}) invoked successfully:`, data); }
-             } catch (invokeError) { console.error(`Error calling edge function ${EMAIL_FUNCTION_NAME}:`, invokeError); leaderboardSubmitStatus.textContent += " (video email failed)"; }
-             await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate delay
+            console.log(`Invoking email function for video: ${filePath}`);
+            try {
+                const { data, error } = await supabaseClient.functions.invoke(EMAIL_FUNCTION_NAME, { body: { filePath, userEmail, userName, entryId } });
+                if (error) { 
+                    console.error(`Edge function invocation error (${EMAIL_FUNCTION_NAME}):`, error); 
+                    leaderboardSubmitStatus.textContent = "Score saved! (video email failed)"; 
+                    leaderboardSubmitStatus.className = "info-message";
+                }
+                else { 
+                    console.log(`Edge function (${EMAIL_FUNCTION_NAME}) invoked successfully:`, data); 
+                    leaderboardSubmitStatus.textContent = "Score saved! Video link will be emailed"; 
+                    leaderboardSubmitStatus.className = "success-message";
+                }
+            } catch (invokeError) { 
+                console.error(`Error calling edge function ${EMAIL_FUNCTION_NAME}:`, invokeError); 
+                leaderboardSubmitStatus.textContent = "Score saved! (video email failed)"; 
+                leaderboardSubmitStatus.className = "info-message";
+            }
         }
 
         async function showFinalLeaderboard(didJoin) {
@@ -689,7 +766,12 @@
              leaderboardBodyBlurred.innerHTML = ''; leaderboardBodyFinal.innerHTML = '';
              userWantsToRecord = recordCheckbox.checked; // Resync
              recordWarning.style.display = userWantsToRecord ? 'block' : 'none';
-             uploadStatus.textContent = ''; uploadInProgress = false; videoBlob = null; lastUploadedFilePath = null;
+             uploadStatus.textContent = ''; 
+             uploadProgressContainer.style.display = 'none';
+             uploadInProgress = false; 
+             videoBlob = null; 
+             lastUploadedFilePath = null;
+             videoWatermark.style.display = 'none';
              panels.quiz.classList.remove('no-video', 'video-active');
              quizContentOverlay.style.display = 'none';
 
