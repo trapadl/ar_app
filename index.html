@@ -184,23 +184,22 @@
                  
                  <!-- Video download section - only shown when video is available -->
                  <div id="video-download-container" style="width: 100%; margin: 15px 0; display: none; text-align: center;">
-                     <p class="success-message" style="text-align: center;">Your video is ready!</p>
-                     <button id="btn-download-video" class="primary-button" style="background-color: #80cbc4; margin-top: 10px;">
-                         Download Your Video
-                     </button>
+                     <p class="success-message" style="text-align: center;">your video is ready!</p>
+                     <a id="btn-download-video" class="primary-button" style="background-color: #80cbc4; margin-top: 10px; display: inline-block; padding: 10px 20px; border-radius: 5px; color: #121212; text-decoration: none; font-weight: bold;" download="bar-challenge-video.webm">
+                         download your video
+                     </a>
                      <p class="info-message" style="text-align: center; font-size: 12px; margin-top: 5px;">
-                         (Video available for 24 hours)
+                         (video available for 24 hours)
                      </p>
                  </div>
                  
                  <h3>top times</h3>
-                 <div id="leaderboard-container">
+                                   <div id="leaderboard-container">
                      <table id="leaderboard-table">
                          <thead> <tr><th>rank</th><th>name</th><th>time (s)</th></tr> </thead>
                          <tbody id="leaderboard-body-final"><tr><td colspan="3" style="text-align:center;">loading scores...</td></tr></tbody>
                      </table>
                  </div>
-                  <button id="btn-play-again" style="margin-top: 20px;">play again</button>
               </div>
         </div>
 
@@ -208,7 +207,7 @@
         <div id="panel-error" class="panel">
             <div class="panel-content-container">
                  <div class="logo-placeholder logo-fixed"><img src="./Asset 2.png" alt="your bar logo"></div>
-                 <h2>oops! something went wrong.</h2>
+                 <h2 id="error-details" style="text-align:center;">oops! something went wrong.</h2>
                  <p id="error-details" style="text-align:center;">an error occurred.</p>
                  <button id="btn-error-back">go back to start</button>
              </div>
@@ -230,7 +229,7 @@
         // --- QUIZ CONTENT ---
         const quizSteps = [
             { instructions: `<p>first set of directions:</p><ol><li>face the main road.</li><li>turn 90 degrees to the right.</li><li>take about 20 steps towards the street corner ahead.</li></ol><p>now, look at the prominent building across the road.</p>`, question: "what is the name of the hotel you're looking at?", answer: "sofitel" },
-            { instructions: `<p>next directions:</p><ol><li>from where you answered the last question, turn 90 degrees to your right.</li><li>take about 20 steps until you reach the first alleyway entrance on your left.</li></ol><p>look at the sign or the general vibe of the laneway.</p>`, question: "what is the name of this colourful laneway?", answer: "cold chisel lane" },
+            { instructions: `<p>next directions:</p><ol><li>from where you answered the last question, turn 90 degrees to your right.</li><li>take about 20 steps until you reach the first alleyway entrance on your left.</li></ol><p>look at the sign or the general vibe of the laneway.</p>`, question: "what is the name of this colourful laneway?", answer: ["cold chisel lane", "cold chisel ln", "coldchisel lane", "coldchisel ln"] },
             { instructions: `<p>final stretch:</p><ol><li>walk down the laneway (cold chisel lane).</li><li>enter the first set of clearly open doors you find on your right hand side.</li></ol><p>you should now be inside the bar!</p>`, question: "approach the bar staff and ask politely: \"what's the secret password?\"", answer: "negroni" }
         ];
 
@@ -410,8 +409,19 @@
         function handleAnswerSubmit() {
             const currentStep = quizSteps[currentStepIndex];
             const userAnswer = quizAnswerInput.value.trim().toLowerCase();
-            const correctAnswer = currentStep.answer.toLowerCase();
-            if (userAnswer === correctAnswer) {
+            
+            // Check if the answer is correct by comparing with any of the accepted variants
+            let isCorrect = false;
+            
+            if (Array.isArray(currentStep.answer)) {
+                // If the answer has multiple accepted variants
+                isCorrect = currentStep.answer.some(variant => userAnswer === variant.toLowerCase());
+            } else {
+                // If the answer is a single string
+                isCorrect = userAnswer === currentStep.answer.toLowerCase();
+            }
+            
+            if (isCorrect) {
                 quizErrorMsg.textContent = ''; currentStepIndex++;
                 if (currentStepIndex >= quizSteps.length) { finishQuiz(); }
                 else { displayStep(currentStepIndex); }
@@ -475,6 +485,9 @@
              if (!mediaStream) { console.error("cannot start recording, no media stream."); return; }
              if (typeof MediaRecorder === 'undefined') { console.error("mediarecorder not supported."); return; }
              try {
+                 // Show watermark when recording starts
+                 videoWatermark.style.display = 'block';
+                 
                  const options = { mimeType: 'video/webm;codecs=vp8,opus' };
                   if (!MediaRecorder.isTypeSupported(options.mimeType)) { options.mimeType = 'video/mp4'; }
                   if (!MediaRecorder.isTypeSupported(options.mimeType)) { delete options.mimeType; }
@@ -850,10 +863,9 @@
                  // Construct video URL
                  const videoUrl = `${SUPABASE_URL}/storage/v1/object/public/${STORAGE_BUCKET_NAME}/${lastUploadedFilePath}`;
                  
-                 // Set up download button
-                 downloadButton.addEventListener('click', () => {
-                     window.open(videoUrl, '_blank');
-                 });
+                 // Set up download button as an anchor with download attribute
+                 downloadButton.href = videoUrl;
+                 // The download attribute tells the browser to download instead of navigating
              } else {
                  videoDownloadContainer.style.display = 'none';
              }
@@ -881,7 +893,7 @@
                      if (data.length === INITIAL_LEADERBOARD_LIMIT) {
                          // Add a "See more" button after the table
                          const showMoreBtn = document.createElement('button');
-                         showMoreBtn.textContent = 'Show more scores...';
+                         showMoreBtn.textContent = 'show more scores...';
                          showMoreBtn.className = 'show-more-btn';
                          showMoreBtn.onclick = loadMoreFinalScores;
                          const container = document.querySelector('#panel-final-leaderboard #leaderboard-container');
@@ -921,7 +933,7 @@
                 // Remove the button after expanding
                 this.style.display = 'none';
             } catch (error) {
-                console.error("Error loading more scores:", error);
+                console.error("error loading more scores:", error);
             }
         }
 
