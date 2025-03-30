@@ -1,0 +1,1310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Bar Race Challenge</title>
+    <!-- Import Supabase Client Library -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <style>
+        /* Basic Reset & Mobile First Styles */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        html, body {
+            height: 100%;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #f4f4f4;
+            color: #333;
+            overscroll-behavior: contain; /* Prevent pull-to-refresh */
+        }
+
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: flex-start; /* Align items to top for scrolling */
+            padding-top: 20px;
+        }
+
+        #app {
+            width: 100%;
+            max-width: 500px;
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            min-height: calc(100vh - 40px); /* Adjust for body padding */
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Screen Visibility Control */
+        .screen {
+            display: none; /* Hide all screens by default */
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+            flex-grow: 1; /* Allow screens to take available space */
+        }
+
+        .screen.active {
+            display: flex; /* Show the active screen */
+        }
+
+        /* Common Elements */
+        h1, h2 {
+            margin-bottom: 15px;
+            color: #555;
+        }
+        p {
+            margin-bottom: 15px;
+            line-height: 1.6;
+        }
+        button {
+            display: inline-block;
+            background-color: #007bff;
+            color: white;
+            padding: 12px 25px;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            margin-top: 10px;
+            margin-bottom: 10px;
+            transition: background-color 0.2s ease;
+            width: 80%;
+            max-width: 300px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        input[type="text"], input[type="email"], input[type="password"], input[type="number"] {
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            width: 80%;
+            max-width: 300px;
+            font-size: 16px;
+        }
+        .error-message {
+            color: #dc3545;
+            margin-top: 10px;
+            font-weight: bold;
+        }
+        .info-message {
+            color: #17a2b8;
+            margin-top: 10px;
+        }
+        .success-message {
+            color: #28a745;
+            margin-top: 10px;
+            font-weight: bold;
+        }
+
+        /* Specific Screen Styles */
+        #admin-waypoints-list {
+            list-style: none;
+            padding: 0;
+            text-align: left;
+            max-height: 200px;
+            overflow-y: auto;
+            border: 1px solid #eee;
+            margin-top: 10px;
+            margin-bottom: 10px;
+            width: 90%;
+        }
+        #admin-waypoints-list li {
+            padding: 5px;
+            border-bottom: 1px solid #eee;
+        }
+
+        #compass-container {
+            width: 150px;
+            height: 150px;
+            border: 5px solid #eee;
+            border-radius: 50%;
+            position: relative;
+            margin: 20px auto;
+            overflow: hidden; /* Hide parts of arrow if it goes outside */
+        }
+        #compass-arrow {
+            width: 0;
+            height: 0;
+            border-left: 15px solid transparent;
+            border-right: 15px solid transparent;
+            border-bottom: 75px solid #dc3545; /* Arrow pointing up */
+            position: absolute;
+            top: 0; /* Position top of arrow shape at the top edge */
+            left: 50%;
+            transform-origin: 50% 100%; /* Rotate around the bottom center */
+            transition: transform 0.2s linear;
+            /* Start rotated, will be updated by JS */
+            transform: translateX(-50%) translateY(37.5px) rotate(0deg); /* Center base and offset */
+        }
+        #compass-north {
+            position: absolute;
+            top: 0px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-weight: bold;
+            color: #aaa;
+        }
+
+        #leaderboard-container {
+            margin-top: 20px;
+            width: 100%;
+            max-height: 40vh; /* Limit height and allow scrolling */
+            overflow-y: auto;
+            border: 1px solid #eee;
+        }
+        #leaderboard-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        #leaderboard-table th, #leaderboard-table td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        #leaderboard-table th {
+            background-color: #f2f2f2;
+            position: sticky; /* Keep headers visible */
+            top: 0;
+            z-index: 1;
+        }
+         #leaderboard-table td:nth-child(1), #leaderboard-table th:nth-child(1) {
+            width: 10%; /* Rank */
+         }
+         #leaderboard-table td:nth-child(3), #leaderboard-table th:nth-child(3) {
+            width: 30%; /* Time */
+         }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <!-- 1. Landing Screen -->
+        <div id="screen-landing" class="screen active">
+            <h1>Welcome to the Bar Race!</h1>
+            <p>Navigate from the back door to the front door using your phone.</p>
+            <button id="btn-start-user">Start Race</button>
+            <button id="btn-admin" style="background-color: #6c757d;">Admin</button>
+        </div>
+
+        <!-- 2. Admin Login Screen -->
+        <div id="screen-admin-login" class="screen">
+            <h2>Admin Access</h2>
+            <label for="admin-code">Enter 4-Digit Code:</label>
+            <input type="password" id="admin-code" inputmode="numeric" pattern="[0-9]*" maxlength="4">
+            <button id="btn-admin-submit">Login</button>
+            <button id="btn-admin-back" style="background-color: #6c757d;">Back</button>
+            <p id="admin-login-error" class="error-message"></p>
+        </div>
+
+        <!-- 3. Admin Trail Recording Screen -->
+        <div id="screen-admin-record" class="screen">
+            <h2>Record Trail Waypoints</h2>
+            <p>Walk the route and press "Record Waypoint" at key points (like corners).</p>
+            <button id="btn-record-waypoint">Record Waypoint</button>
+            <label for="waypoint-label">Optional Label:</label>
+            <input type="text" id="waypoint-label" placeholder="e.g., First Corner">
+            <ul id="admin-waypoints-list">
+                <!-- Recorded waypoints will be listed here -->
+            </ul>
+            <p id="admin-record-status" class="info-message"></p>
+            <button id="btn-save-trail" disabled>Save Trail to Supabase</button>
+            <button id="btn-record-back" style="background-color: #6c757d;">Back to Landing</button>
+        </div>
+
+        <!-- 4. User Calibration Screen -->
+        <div id="screen-user-calibrate" class="screen">
+            <h2>Prepare for the Race</h2>
+            <p>For best results, your phone's compass may need calibration. If the direction seems off during the race, try moving your phone in a figure-8 pattern.</p>
+            <p>We need access to your location and device orientation.</p>
+            <div id="compass-container-calibrate">
+                 <div id="compass-arrow-calibrate" style="width: 0; height: 0; border-left: 15px solid transparent; border-right: 15px solid transparent; border-bottom: 75px solid #007bff; position: absolute; top: 0; left: 50%; transform-origin: 50% 100%; transform: translateX(-50%) translateY(37.5px) rotate(0deg); transition: transform 0.2s linear;"></div>
+                 <div style="position: absolute; top: 0px; left: 50%; transform: translateX(-50%); font-weight: bold; color: #aaa;">N</div>
+            </div>
+            <p id="calibration-info">Rotate your phone to test the compass.</p>
+             <p class="info-message">(On iOS, you might need to tap 'Allow' twice for motion & orientation).</p>
+            <button id="btn-request-perms-and-start">Grant Permissions & Start Race</button>
+            <p id="user-error-message" class="error-message"></p>
+             <button id="btn-calibrate-back" style="background-color: #6c757d;">Back to Landing</button>
+        </div>
+
+        <!-- 5. User Race Screen -->
+        <div id="screen-user-race" class="screen">
+            <h2>Race in Progress!</h2>
+            <p>Time: <span id="race-timer">0.0</span>s</p>
+            <p>Next Waypoint: <strong id="next-waypoint-label">Loading...</strong></p>
+            <p>Distance: <span id="distance-to-waypoint">---</span> meters</p>
+            <p id="compass-instruction">Follow the arrow:</p>
+            <div id="compass-container">
+                <div id="compass-north">N</div>
+                <div id="compass-arrow"></div>
+            </div>
+            <p id="race-status" class="info-message"></p>
+            <p id="compass-support-warning" class="error-message" style="display: none;">Compass not supported or available on this device. Rely on distance.</p>
+        </div>
+
+        <!-- 6. User Finish Screen -->
+        <div id="screen-user-finish" class="screen">
+            <h2>You've Arrived!</h2>
+            <p>Your final time is: <strong id="final-time">0.0</strong> seconds!</p>
+            <p>Want to join the leaderboard?</p>
+            <label for="user-name">Name:</label>
+            <input type="text" id="user-name" placeholder="Your Name">
+            <label for="user-email">Email:</label>
+            <input type="email" id="user-email" placeholder="your.email@example.com">
+            <button id="btn-join-leaderboard">Join Leaderboard</button>
+            <button id="btn-skip-prompt1" style="background-color: #6c757d;">Skip</button>
+            <p id="leaderboard-submit-status" class="info-message"></p>
+        </div>
+
+        <!-- 7. User Discount Prompt Screen -->
+         <div id="screen-user-discount-prompt" class="screen">
+             <h2>Wait! Get 10% Off!</h2>
+             <p>Join the leaderboard and get a 10% discount voucher for Trap!</p>
+             <label for="user-name-discount">Name:</label>
+             <input type="text" id="user-name-discount" placeholder="Your Name">
+             <label for="user-email-discount">Email:</label>
+             <input type="email" id="user-email-discount" placeholder="your.email@example.com">
+             <button id="btn-join-leaderboard-discount">Join & Get Discount</button>
+             <button id="btn-skip-prompt2" style="background-color: #6c757d;">No Thanks</button>
+             <p id="leaderboard-submit-status-discount" class="info-message"></p>
+         </div>
+
+        <!-- 8. Final Leaderboard Screen -->
+        <div id="screen-final-leaderboard" class="screen">
+            <h2 id="final-message">Thanks for playing!</h2>
+            <h3>Top Times</h3>
+            <div id="leaderboard-container">
+                <table id="leaderboard-table">
+                    <thead>
+                        <tr>
+                            <th>Rank</th>
+                            <th>Name</th>
+                            <th>Time (s)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="leaderboard-body">
+                        <!-- Leaderboard entries will be loaded here -->
+                         <tr><td colspan="3">Loading leaderboard...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+             <button id="btn-play-again" style="margin-top: 20px;">Play Again</button>
+        </div>
+
+         <!-- 9. Error/Permission Denied Screen -->
+        <div id="screen-error" class="screen">
+             <h2>Oops! Something went wrong.</h2>
+             <p id="error-details">An error occurred.</p>
+             <button id="btn-error-back">Go Back</button>
+        </div>
+
+    </div>
+
+    <script>
+        /*****************************************
+         *           CONFIGURATION               *
+         *****************************************/
+
+        // --- SUPABASE ---
+        // Replace with your actual Supabase URL and Anon Key
+        // How to get these:
+        // 1. Go to your Supabase project dashboard.
+        // 2. Navigate to Project Settings > API.
+        // 3. Find your Project URL and anon public key.
+        const SUPABASE_URL = "https://hdagjajchjxsyytdlqzi.supabase.co"; // <-- REPLACE THIS
+        const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhkYWdqYWpjaGp4c3l5dGRscXppIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDMyOTE3NjEsImV4cCI6MjA1ODg2Nzc2MX0.8A5dhEKfDbUOeouvp_e32rMR-NUwnUjBTuP-8tEtsYU"; // <-- REPLACE THIS
+
+        // --- ADMIN ---
+        const ADMIN_CODE = "9090"; // The 4-digit code for admin access
+
+        // --- GAMEPLAY ---
+        const WAYPOINT_PROXIMITY_THRESHOLD = 10; // Meters - How close user needs to be to a waypoint
+        const LEADERBOARD_LIMIT = 20; // Max number of entries to show on leaderboard
+
+        /*****************************************
+         *        DOM ELEMENT REFERENCES         *
+         *****************************************/
+        const app = document.getElementById('app');
+        const screens = {
+            landing: document.getElementById('screen-landing'),
+            adminLogin: document.getElementById('screen-admin-login'),
+            adminRecord: document.getElementById('screen-admin-record'),
+            userCalibrate: document.getElementById('screen-user-calibrate'),
+            userRace: document.getElementById('screen-user-race'),
+            userFinish: document.getElementById('screen-user-finish'),
+            userDiscountPrompt: document.getElementById('screen-user-discount-prompt'),
+            finalLeaderboard: document.getElementById('screen-final-leaderboard'),
+            error: document.getElementById('screen-error')
+        };
+        // Buttons
+        const btnStartUser = document.getElementById('btn-start-user');
+        const btnAdmin = document.getElementById('btn-admin');
+        const btnAdminSubmit = document.getElementById('btn-admin-submit');
+        const btnAdminBack = document.getElementById('btn-admin-back');
+        const btnRecordWaypoint = document.getElementById('btn-record-waypoint');
+        const btnSaveTrail = document.getElementById('btn-save-trail');
+        const btnRecordBack = document.getElementById('btn-record-back');
+        const btnRequestPermsAndStart = document.getElementById('btn-request-perms-and-start');
+        const btnCalibrateBack = document.getElementById('btn-calibrate-back');
+        const btnJoinLeaderboard = document.getElementById('btn-join-leaderboard');
+        const btnSkipPrompt1 = document.getElementById('btn-skip-prompt1');
+        const btnJoinLeaderboardDiscount = document.getElementById('btn-join-leaderboard-discount');
+        const btnSkipPrompt2 = document.getElementById('btn-skip-prompt2');
+        const btnPlayAgain = document.getElementById('btn-play-again');
+        const btnErrorBack = document.getElementById('btn-error-back');
+
+        // Inputs & Display Areas
+        const adminCodeInput = document.getElementById('admin-code');
+        const adminLoginError = document.getElementById('admin-login-error');
+        const waypointLabelInput = document.getElementById('waypoint-label');
+        const adminWaypointsList = document.getElementById('admin-waypoints-list');
+        const adminRecordStatus = document.getElementById('admin-record-status');
+        const userErrorMessage = document.getElementById('user-error-message');
+        const calibrationInfo = document.getElementById('calibration-info');
+        const compassArrowCalibrate = document.getElementById('compass-arrow-calibrate');
+        const raceTimerDisplay = document.getElementById('race-timer');
+        const nextWaypointLabelDisplay = document.getElementById('next-waypoint-label');
+        const distanceDisplay = document.getElementById('distance-to-waypoint');
+        const compassInstruction = document.getElementById('compass-instruction');
+        const compassContainer = document.getElementById('compass-container');
+        const compassArrow = document.getElementById('compass-arrow');
+        const compassSupportWarning = document.getElementById('compass-support-warning');
+        const raceStatus = document.getElementById('race-status');
+        const finalTimeDisplay = document.getElementById('final-time');
+        const userNameInput = document.getElementById('user-name');
+        const userEmailInput = document.getElementById('user-email');
+        const leaderboardSubmitStatus = document.getElementById('leaderboard-submit-status');
+        const userNameDiscountInput = document.getElementById('user-name-discount');
+        const userEmailDiscountInput = document.getElementById('user-email-discount');
+        const leaderboardSubmitStatusDiscount = document.getElementById('leaderboard-submit-status-discount');
+        const finalMessage = document.getElementById('final-message');
+        const leaderboardBody = document.getElementById('leaderboard-body');
+        const errorDetails = document.getElementById('error-details');
+
+        /*****************************************
+         *           APPLICATION STATE           *
+         *****************************************/
+        let supabase = null;
+        let currentScreen = 'landing';
+        let isAdmin = false;
+        let recordedWaypoints = []; // For admin mode
+        let trailWaypoints = []; // Loaded from Supabase for user mode
+        let currentWaypointIndex = 0;
+        let userLocation = null; // { latitude, longitude, accuracy }
+        let userHeading = null; // Degrees from North
+        let startTime = null;
+        let endTime = null;
+        let finalTimeSeconds = 0;
+        let timerInterval = null;
+        let watchId = null; // Geolocation watch ID
+        let orientationListener = null; // DeviceOrientation listener function reference
+        let orientationPermissionNeeded = typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function';
+        let testOrientationListener = null; // For calibration screen
+
+        /*****************************************
+         *         SUPABASE INITIALIZATION       *
+         *****************************************/
+        function initializeSupabase() {
+            if (!SUPABASE_URL || !SUPABASE_ANON_KEY || SUPABASE_URL.includes("YOUR_PROJECT") || SUPABASE_ANON_KEY.includes("YOUR_ANON")) {
+                 console.error("Supabase URL or Anon Key is not configured. Please update the placeholders.");
+                 showErrorScreen("Application Error: Supabase credentials are missing. Please configure them in the HTML source.");
+                 return false;
+            }
+            try {
+                 supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                 console.log("Supabase client initialized.");
+                 return true;
+            } catch (error) {
+                 console.error("Error initializing Supabase:", error);
+                 showErrorScreen(`Failed to initialize database connection: ${error.message}`);
+                 return false;
+            }
+        }
+
+        /*****************************************
+         *          SCREEN MANAGEMENT            *
+         *****************************************/
+        function showScreen(screenName) {
+            console.log("Showing screen:", screenName);
+            Object.values(screens).forEach(screen => screen.classList.remove('active'));
+            if (screens[screenName]) {
+                screens[screenName].classList.add('active');
+                currentScreen = screenName;
+                 // Scroll to top when changing screens
+                window.scrollTo(0, 0);
+            } else {
+                console.error("Screen not found:", screenName);
+                screens.landing.classList.add('active'); // Fallback to landing
+                currentScreen = 'landing';
+            }
+        }
+
+         function showErrorScreen(message) {
+            stopAllActivity(); // Stop timers, sensors etc.
+            errorDetails.textContent = message;
+            showScreen('error');
+         }
+
+        /*****************************************
+         *            ADMIN FUNCTIONS            *
+         *****************************************/
+        function handleAdminClick() {
+            adminCodeInput.value = '';
+            adminLoginError.textContent = '';
+            showScreen('adminLogin');
+        }
+
+        function handleAdminLogin() {
+            const code = adminCodeInput.value;
+            if (code === ADMIN_CODE) {
+                isAdmin = true;
+                recordedWaypoints = []; // Clear previous recording state
+                updateAdminWaypointList();
+                adminRecordStatus.textContent = '';
+                btnSaveTrail.disabled = true;
+                showScreen('adminRecord');
+            } else {
+                adminLoginError.textContent = "Invalid code.";
+            }
+        }
+
+        function handleRecordWaypoint() {
+            const label = waypointLabelInput.value.trim();
+            adminRecordStatus.textContent = "Getting location...";
+            btnRecordWaypoint.disabled = true;
+
+            if (!navigator.geolocation) {
+                adminRecordStatus.textContent = "Geolocation is not supported by your browser.";
+                btnRecordWaypoint.disabled = false;
+                return;
+            }
+
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    const newWaypoint = {
+                        lat: position.coords.latitude,
+                        lon: position.coords.longitude,
+                        label: label || `Waypoint ${recordedWaypoints.length + 1}` // Default label
+                    };
+                    recordedWaypoints.push(newWaypoint);
+                    updateAdminWaypointList();
+                    waypointLabelInput.value = ''; // Clear label input
+                    adminRecordStatus.textContent = `Waypoint ${recordedWaypoints.length} recorded (Accuracy: ${position.coords.accuracy.toFixed(1)}m).`;
+                    btnSaveTrail.disabled = false; // Enable saving once we have at least one waypoint
+                    btnRecordWaypoint.disabled = false;
+                },
+                (error) => {
+                    console.error("Geolocation error:", error);
+                    adminRecordStatus.textContent = `Error getting location: ${error.message}`;
+                     if (error.code === 1) { // PERMISSION_DENIED
+                         adminRecordStatus.textContent += " Please allow location access.";
+                     }
+                    btnRecordWaypoint.disabled = false;
+                },
+                { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 } // Options for accuracy
+            );
+        }
+
+        function updateAdminWaypointList() {
+            adminWaypointsList.innerHTML = ''; // Clear current list
+            if (recordedWaypoints.length === 0) {
+                adminWaypointsList.innerHTML = '<li>No waypoints recorded yet.</li>';
+            } else {
+                recordedWaypoints.forEach((wp, index) => {
+                    const li = document.createElement('li');
+                    li.textContent = `${index + 1}: ${wp.label} (${wp.lat.toFixed(6)}, ${wp.lon.toFixed(6)})`;
+                    adminWaypointsList.appendChild(li);
+                });
+            }
+        }
+
+        async function handleSaveTrail() {
+            if (recordedWaypoints.length === 0) {
+                adminRecordStatus.textContent = "No waypoints to save.";
+                return;
+            }
+            if (!supabase) {
+                 showErrorScreen("Database connection not available.");
+                 return;
+            }
+
+            btnSaveTrail.disabled = true;
+            adminRecordStatus.textContent = "Saving trail...";
+
+            try {
+                // Check if a trail already exists. We'll update the first one we find.
+                let { data: existingTrails, error: fetchError } = await supabase
+                    .from('trails')
+                    .select('id')
+                    .limit(1);
+
+                if (fetchError) throw fetchError;
+
+                let result;
+                const trailData = {
+                    name: 'Bar Trail', // Use a consistent name
+                    waypoints: recordedWaypoints,
+                    // created_at is handled by default value in DB
+                };
+
+                if (existingTrails && existingTrails.length > 0) {
+                    // Update existing trail
+                    console.log("Updating existing trail with ID:", existingTrails[0].id);
+                    const { data, error } = await supabase
+                        .from('trails')
+                        .update({ waypoints: recordedWaypoints, name: 'Bar Trail' }) // Ensure name is set too
+                        .eq('id', existingTrails[0].id)
+                        .select(); // Optionally select to confirm update
+                    if (error) throw error;
+                    result = data;
+                } else {
+                    // Insert new trail
+                    console.log("Inserting new trail.");
+                     const { data, error } = await supabase
+                        .from('trails')
+                        .insert([trailData])
+                        .select();
+                     if (error) throw error;
+                     result = data;
+                }
+
+                 console.log("Save trail result:", result);
+                 adminRecordStatus.textContent = `Trail saved successfully! (${recordedWaypoints.length} waypoints)`;
+                 recordedWaypoints = []; // Clear after saving
+                 updateAdminWaypointList();
+                 // Keep save button disabled until new waypoints are added
+            } catch (error) {
+                console.error("Error saving trail:", error);
+                adminRecordStatus.textContent = `Error saving trail: ${error.message}`;
+                btnSaveTrail.disabled = recordedWaypoints.length === 0; // Re-enable if there are still waypoints
+            }
+        }
+
+        /*****************************************
+         *            USER FUNCTIONS             *
+         *****************************************/
+
+         function handleStartUserMode() {
+            isAdmin = false;
+            userErrorMessage.textContent = '';
+            calibrationInfo.textContent = 'Rotate your phone to test the compass.';
+            compassArrowCalibrate.style.transform = `translateX(-50%) translateY(37.5px) rotate(0deg)`; // Reset calibration arrow
+            startCalibrationCompassTest(); // Start listening for orientation briefly
+            showScreen('userCalibrate');
+         }
+
+         function startCalibrationCompassTest() {
+             // Remove any previous listener first
+             if (testOrientationListener && window.DeviceOrientationEvent) {
+                 window.removeEventListener('deviceorientation', testOrientationListener);
+             }
+
+             if (window.DeviceOrientationEvent) {
+                 testOrientationListener = (event) => {
+                     let heading = null;
+                     if (event.webkitCompassHeading) { // iOS
+                         heading = event.webkitCompassHeading;
+                     } else if (event.absolute === true && event.alpha !== null) { // Standard compliant
+                         heading = 360 - event.alpha; // Alpha is angle from North, clockwise
+                     }
+                     // Don't use non-absolute alpha as it's relative to device start orientation
+
+                     if (heading !== null) {
+                         compassArrowCalibrate.style.transform = `translateX(-50%) translateY(37.5px) rotate(${heading}deg)`;
+                         calibrationInfo.textContent = `Compass reading: ${Math.round(heading)}°`;
+                     } else {
+                         calibrationInfo.textContent = 'Compass direction not available. Try rotating.';
+                     }
+                 };
+                 // Try adding listener immediately, requestPermission handles iOS later
+                 window.addEventListener('deviceorientation', testOrientationListener);
+             } else {
+                 calibrationInfo.textContent = 'Device orientation (compass) not supported on this browser/device.';
+             }
+         }
+
+        function stopCalibrationCompassTest() {
+             if (testOrientationListener && window.DeviceOrientationEvent) {
+                 window.removeEventListener('deviceorientation', testOrientationListener);
+                 testOrientationListener = null;
+             }
+        }
+
+         async function handleRequestPermsAndStart() {
+            stopCalibrationCompassTest(); // Stop the test listener
+            userErrorMessage.textContent = '';
+            btnRequestPermsAndStart.disabled = true;
+            btnRequestPermsAndStart.textContent = 'Requesting...';
+
+            let orientationGranted = !orientationPermissionNeeded; // Assume granted if no request function exists
+            let locationGranted = false;
+
+            // 1. Request Orientation Permissions (iOS)
+            if (orientationPermissionNeeded) {
+                try {
+                    const permissionState = await DeviceOrientationEvent.requestPermission();
+                    if (permissionState === 'granted') {
+                        orientationGranted = true;
+                        console.log("Orientation permission granted.");
+                    } else {
+                        userErrorMessage.textContent = 'Device Orientation permission denied. Compass guidance will not work.';
+                        // Allow proceeding without compass? For this app, probably not.
+                        // btnRequestPermsAndStart.disabled = false;
+                        // btnRequestPermsAndStart.textContent = 'Grant Permissions & Start Race';
+                        // return; // Or continue without compass
+                        console.warn("Orientation permission denied.");
+                    }
+                } catch (error) {
+                    console.error("Error requesting orientation permission:", error);
+                    userErrorMessage.textContent = 'Could not request orientation permissions. Try again or check browser settings.';
+                    // btnRequestPermsAndStart.disabled = false;
+                    // btnRequestPermsAndStart.textContent = 'Grant Permissions & Start Race';
+                    // return; // Or continue without compass
+                }
+            }
+
+             // 2. Request Geolocation Permissions (will prompt if not already granted)
+             if (!navigator.geolocation) {
+                 userErrorMessage.textContent = "Geolocation is not supported by your browser.";
+                 btnRequestPermsAndStart.disabled = false;
+                 btnRequestPermsAndStart.textContent = 'Grant Permissions & Start Race';
+                 return;
+             }
+
+             navigator.geolocation.getCurrentPosition(
+                 (position) => {
+                     console.log("Geolocation permission granted and location obtained.");
+                     locationGranted = true;
+                     // Now that permissions seem okay, proceed to fetch trail and start race
+                     fetchTrailAndStartRace(orientationGranted);
+                 },
+                 (error) => {
+                     console.error("Geolocation error:", error);
+                     if (error.code === 1) { // PERMISSION_DENIED
+                         userErrorMessage.textContent = "Location permission denied. The race cannot start without it.";
+                     } else {
+                         userErrorMessage.textContent = `Error getting initial location: ${error.message}`;
+                     }
+                     btnRequestPermsAndStart.disabled = false;
+                     btnRequestPermsAndStart.textContent = 'Grant Permissions & Start Race';
+                 },
+                 { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+             );
+         }
+
+
+        async function fetchTrailAndStartRace(orientationAvailable) {
+            if (!supabase) {
+                 showErrorScreen("Database connection not available.");
+                 btnRequestPermsAndStart.disabled = false; // Re-enable button
+                 btnRequestPermsAndStart.textContent = 'Grant Permissions & Start Race';
+                 return;
+            }
+
+            userErrorMessage.textContent = "Loading trail data...";
+            console.log("Fetching trail...");
+
+            try {
+                let { data, error } = await supabase
+                    .from('trails')
+                    .select('waypoints')
+                    .limit(1); // Get the first (and only) trail
+
+                if (error) throw error;
+
+                if (!data || data.length === 0 || !data[0].waypoints || data[0].waypoints.length === 0) {
+                     userErrorMessage.textContent = "No trail found in the database. An admin needs to record the trail first.";
+                     btnRequestPermsAndStart.disabled = false;
+                     btnRequestPermsAndStart.textContent = 'Grant Permissions & Start Race';
+                     return;
+                }
+
+                trailWaypoints = data[0].waypoints;
+                console.log(`Trail loaded with ${trailWaypoints.length} waypoints.`);
+
+                // Reset race state
+                currentWaypointIndex = 0;
+                userLocation = null;
+                userHeading = null;
+                startTime = null;
+                endTime = null;
+                finalTimeSeconds = 0;
+                if (timerInterval) clearInterval(timerInterval);
+                if (watchId) navigator.geolocation.clearWatch(watchId);
+                if (orientationListener && window.DeviceOrientationEvent) {
+                     window.removeEventListener('deviceorientation', orientationListener);
+                     orientationListener = null;
+                }
+
+                // Setup race screen
+                compassSupportWarning.style.display = orientationAvailable ? 'none' : 'block';
+                distanceDisplay.textContent = '---';
+                compassArrow.style.transform = 'translateX(-50%) translateY(37.5px) rotate(0deg)'; // Reset arrow
+                updateNextWaypointUI();
+                showScreen('userRace');
+
+                // Start sensors and timer
+                startTimer();
+                startGeolocationWatch();
+                if (orientationAvailable) {
+                    startOrientationListener();
+                    compassInstruction.textContent = "Follow the arrow:";
+                } else {
+                    compassInstruction.textContent = "Head towards the next waypoint:";
+                     compassContainer.style.display = 'none'; // Hide compass visuals if no sensor
+                }
+
+            } catch (error) {
+                console.error("Error fetching trail:", error);
+                userErrorMessage.textContent = `Error loading trail: ${error.message}`;
+                 btnRequestPermsAndStart.disabled = false; // Re-enable button
+                 btnRequestPermsAndStart.textContent = 'Grant Permissions & Start Race';
+            }
+        }
+
+        function startTimer() {
+            startTime = Date.now();
+            raceTimerDisplay.textContent = '0.0';
+            timerInterval = setInterval(() => {
+                const elapsed = (Date.now() - startTime) / 1000;
+                raceTimerDisplay.textContent = elapsed.toFixed(1);
+            }, 100); // Update timer display every 100ms
+        }
+
+        function stopTimer() {
+            if (timerInterval) {
+                clearInterval(timerInterval);
+                timerInterval = null;
+            }
+            endTime = Date.now();
+            if (startTime) {
+                finalTimeSeconds = (endTime - startTime) / 1000;
+            } else {
+                finalTimeSeconds = 0; // Should not happen if timer started correctly
+            }
+             // Display final fixed time
+             raceTimerDisplay.textContent = finalTimeSeconds.toFixed(1);
+             console.log(`Race finished. Time: ${finalTimeSeconds.toFixed(1)}s`);
+        }
+
+        function startGeolocationWatch() {
+            if (!navigator.geolocation) {
+                showErrorScreen("Geolocation is not supported or permission denied.");
+                return;
+            }
+            raceStatus.textContent = "Waiting for location...";
+            watchId = navigator.geolocation.watchPosition(
+                updateUserPosition,
+                handleGeolocationError,
+                { enableHighAccuracy: true, maximumAge: 5000, timeout: 10000 } // Options: high accuracy, allow slightly older positions, timeout
+            );
+            console.log("Geolocation watch started (ID:", watchId, ")");
+        }
+
+        function stopGeolocationWatch() {
+            if (watchId !== null) {
+                navigator.geolocation.clearWatch(watchId);
+                watchId = null;
+                console.log("Geolocation watch stopped.");
+            }
+        }
+
+        function startOrientationListener() {
+             if (!window.DeviceOrientationEvent) {
+                 console.warn("DeviceOrientationEvent not supported.");
+                 compassSupportWarning.style.display = 'block';
+                 return;
+             }
+             compassSupportWarning.style.display = 'none';
+
+             // Define the listener function
+             orientationListener = (event) => {
+                 let heading = null;
+                 // event.absolute indicates if the orientation is relative to Earth (true) or device (false)
+                 if (event.webkitCompassHeading !== undefined) { // iOS
+                     heading = event.webkitCompassHeading;
+                 } else if (event.absolute === true && event.alpha !== null) { // Standard
+                     // alpha is 0-360, angle relative to North, clockwise.
+                     // We want heading (0 North, 90 East), so it's often the same, but sometimes needs 360 - alpha depending on interpretation.
+                     // Let's assume alpha directly gives heading for simplicity, or use webkitCompassHeading if available.
+                     heading = event.alpha;
+                     // Correction might be needed based on testing: heading = (360 - event.alpha) % 360;
+                 }
+
+                 if (heading !== null) {
+                     userHeading = heading;
+                     updateCompassArrow();
+                 } else {
+                      // Might happen if device can't provide absolute orientation
+                     // console.log("Could not determine absolute heading.");
+                     // Keep previous heading or indicate uncertainty?
+                 }
+             };
+
+             // Add the listener
+             window.addEventListener('deviceorientation', orientationListener);
+             console.log("Orientation listener added.");
+        }
+
+        function stopOrientationListener() {
+             if (orientationListener && window.DeviceOrientationEvent) {
+                 window.removeEventListener('deviceorientation', orientationListener);
+                 orientationListener = null;
+                 console.log("Orientation listener removed.");
+             }
+        }
+
+        function updateUserPosition(position) {
+            userLocation = position.coords; // Store { latitude, longitude, accuracy, ... }
+            // console.log(`Location Update: Lat ${userLocation.latitude}, Lon ${userLocation.longitude}, Acc ${userLocation.accuracy}`);
+            raceStatus.textContent = `Location Accuracy: ${userLocation.accuracy.toFixed(1)}m`;
+
+            if (currentWaypointIndex >= trailWaypoints.length) {
+                console.log("Race already finished, ignoring location update.");
+                return; // Race finished
+            }
+
+            const nextWp = trailWaypoints[currentWaypointIndex];
+            const distance = calculateDistance(
+                userLocation.latitude, userLocation.longitude,
+                nextWp.lat, nextWp.lon
+            );
+            distanceDisplay.textContent = distance.toFixed(1);
+
+            // Check if waypoint reached
+            if (distance <= WAYPOINT_PROXIMITY_THRESHOLD) {
+                console.log(`Reached waypoint ${currentWaypointIndex + 1}: ${nextWp.label}`);
+                currentWaypointIndex++;
+                if (currentWaypointIndex >= trailWaypoints.length) {
+                    // Reached the final waypoint!
+                    finishRace();
+                } else {
+                    // Move to the next waypoint
+                    updateNextWaypointUI();
+                    // Update compass immediately for the new target
+                     updateCompassArrow();
+                     // Optional: Provide feedback like vibration or sound
+                     try { navigator.vibrate(100); } catch(e) {} // Simple vibration feedback
+                }
+            } else {
+                // Not close enough, just update compass
+                updateCompassArrow();
+            }
+        }
+
+        function handleGeolocationError(error) {
+            console.error("Geolocation watch error:", error);
+            raceStatus.textContent = `Location Error: ${error.message}`;
+            // Don't stop the race, maybe it's temporary
+            if (error.code === 1) { // PERMISSION_DENIED
+                showErrorScreen("Location permission was denied during the race. Cannot continue.");
+            }
+        }
+
+         function updateNextWaypointUI() {
+             if (currentWaypointIndex < trailWaypoints.length) {
+                 nextWaypointLabelDisplay.textContent = trailWaypoints[currentWaypointIndex].label || `Waypoint ${currentWaypointIndex + 1}`;
+             } else {
+                 nextWaypointLabelDisplay.textContent = "Finish!";
+             }
+             // Reset distance until next update
+             distanceDisplay.textContent = '---';
+         }
+
+        function updateCompassArrow() {
+            if (userLocation && userHeading !== null && currentWaypointIndex < trailWaypoints.length) {
+                const nextWp = trailWaypoints[currentWaypointIndex];
+                const bearing = calculateBearing(
+                    userLocation.latitude, userLocation.longitude,
+                    nextWp.lat, nextWp.lon
+                );
+
+                // Rotation needed = Bearing to target - Current phone heading
+                let rotation = bearing - userHeading;
+                 // Normalize rotation to handle wrap-around (e.g., bearing 10, heading 350 -> should point slightly right, not far left)
+                 rotation = (rotation + 360) % 360; // Ensure positive
+                 // Optional: adjust for shortest turn? No, we want absolute direction relative to phone top.
+
+                compassArrow.style.transform = `translateX(-50%) translateY(37.5px) rotate(${rotation}deg)`;
+                // console.log(`Heading: ${userHeading.toFixed(1)}, Bearing: ${bearing.toFixed(1)}, Rotation: ${rotation.toFixed(1)}`);
+            } else if (userHeading === null && compassSupportWarning.style.display === 'none') {
+                 // If orientation listener was expected but we don't have a heading
+                 // console.log("Waiting for heading data...");
+            }
+        }
+
+        function finishRace() {
+            console.log("Race Finished!");
+            stopTimer();
+            stopGeolocationWatch();
+            stopOrientationListener();
+
+            finalTimeDisplay.textContent = finalTimeSeconds.toFixed(1);
+            leaderboardSubmitStatus.textContent = ''; // Clear any previous status
+            userNameInput.value = ''; // Clear inputs
+            userEmailInput.value = '';
+
+            // Show the first prompt screen
+            showScreen('userFinish');
+        }
+
+        function handleJoinLeaderboard() {
+             const name = userNameInput.value.trim();
+             const email = userEmailInput.value.trim();
+             if (!name || !email) {
+                 leaderboardSubmitStatus.textContent = "Please enter both name and email.";
+                 return;
+             }
+             // Basic email format check (not foolproof)
+             if (!/^\S+@\S+\.\S+$/.test(email)) {
+                  leaderboardSubmitStatus.textContent = "Please enter a valid email address.";
+                  return;
+             }
+             saveLeaderboardEntry(name, email, finalTimeSeconds, leaderboardSubmitStatus);
+        }
+
+         function handleSkipPrompt1() {
+             // Show discount prompt
+             leaderboardSubmitStatusDiscount.textContent = ''; // Clear status
+             userNameDiscountInput.value = userNameInput.value; // Carry over if entered
+             userEmailDiscountInput.value = userEmailInput.value;
+             showScreen('userDiscountPrompt');
+         }
+
+         function handleJoinLeaderboardDiscount() {
+             const name = userNameDiscountInput.value.trim();
+             const email = userEmailDiscountInput.value.trim();
+             if (!name || !email) {
+                 leaderboardSubmitStatusDiscount.textContent = "Please enter both name and email.";
+                 return;
+             }
+             if (!/^\S+@\S+\.\S+$/.test(email)) {
+                  leaderboardSubmitStatusDiscount.textContent = "Please enter a valid email address.";
+                  return;
+             }
+             // Add a note about the discount - maybe store it with the entry or just assume it's given?
+             // For simplicity, we just save the entry. The discount is implied by joining from this screen.
+             saveLeaderboardEntry(name, email, finalTimeSeconds, leaderboardSubmitStatusDiscount);
+         }
+
+         function handleSkipPrompt2() {
+             // User skipped both prompts, just show the leaderboard
+             showFinalLeaderboard(false); // Indicate user didn't join
+         }
+
+        async function saveLeaderboardEntry(name, email, time, statusElement) {
+             if (!supabase) {
+                 showErrorScreen("Database connection not available.");
+                 return;
+             }
+             statusElement.textContent = "Saving your score...";
+             btnJoinLeaderboard.disabled = true; // Disable both buttons while saving
+             btnJoinLeaderboardDiscount.disabled = true;
+
+             try {
+                 const { data, error } = await supabase
+                     .from('leaderboard')
+                     .insert([
+                         { name: name, email: email, time_in_seconds: time }
+                     ]);
+
+                 if (error) throw error;
+
+                 console.log("Leaderboard entry saved:", data);
+                 // Proceed to show leaderboard, indicating success
+                 showFinalLeaderboard(true); // Indicate user joined
+
+             } catch (error) {
+                 console.error("Error saving leaderboard entry:", error);
+                 statusElement.textContent = `Error saving score: ${error.message}`;
+                 // Should we still show the leaderboard? Yes, probably.
+                 // Add a button maybe to "Try again" or "View Leaderboard Anyway"?
+                 // For now, let's just show the leaderboard after a delay or on a button press
+                 setTimeout(() => showFinalLeaderboard(false), 3000); // Show leaderboard anyway after 3s
+                 btnJoinLeaderboard.disabled = false;
+                 btnJoinLeaderboardDiscount.disabled = false;
+             }
+        }
+
+        async function showFinalLeaderboard(didJoin) {
+             if (!supabase) {
+                  showErrorScreen("Database connection not available.");
+                  return;
+             }
+
+             finalMessage.textContent = didJoin ? "You're on the leaderboard!" : "Thanks for playing!";
+             leaderboardBody.innerHTML = '<tr><td colspan="3">Loading leaderboard...</td></tr>'; // Show loading state
+             showScreen('finalLeaderboard');
+
+             try {
+                 let { data: leaderboardData, error } = await supabase
+                     .from('leaderboard')
+                     .select('name, time_in_seconds')
+                     .order('time_in_seconds', { ascending: true })
+                     .limit(LEADERBOARD_LIMIT);
+
+                 if (error) throw error;
+
+                 leaderboardBody.innerHTML = ''; // Clear loading/previous data
+
+                 if (leaderboardData && leaderboardData.length > 0) {
+                     leaderboardData.forEach((entry, index) => {
+                         const row = leaderboardBody.insertRow();
+                         const rankCell = row.insertCell();
+                         const nameCell = row.insertCell();
+                         const timeCell = row.insertCell();
+
+                         rankCell.textContent = index + 1;
+                         // Sanitize name display slightly (optional)
+                         nameCell.textContent = entry.name ? entry.name.substring(0, 30) : 'Anonymous';
+                         timeCell.textContent = parseFloat(entry.time_in_seconds).toFixed(1);
+                     });
+                 } else {
+                     leaderboardBody.innerHTML = '<tr><td colspan="3">Be the first on the leaderboard!</td></tr>';
+                 }
+
+             } catch (error) {
+                 console.error("Error fetching leaderboard:", error);
+                 leaderboardBody.innerHTML = `<tr><td colspan="3">Error loading leaderboard: ${error.message}</td></tr>`;
+             }
+        }
+
+        function resetToLanding() {
+             // Reset all state variables that need clearing
+             isAdmin = false;
+             recordedWaypoints = [];
+             trailWaypoints = [];
+             currentWaypointIndex = 0;
+             userLocation = null;
+             userHeading = null;
+             startTime = null;
+             endTime = null;
+             finalTimeSeconds = 0;
+             stopAllActivity(); // Ensure sensors/timers are off
+
+             // Reset UI elements if necessary (e.g., clear inputs, statuses)
+             adminCodeInput.value = '';
+             adminLoginError.textContent = '';
+             waypointLabelInput.value = '';
+             updateAdminWaypointList();
+             adminRecordStatus.textContent = '';
+             userErrorMessage.textContent = '';
+             // ... reset other UI elements as needed ...
+
+             // Re-enable potentially disabled buttons
+             btnSaveTrail.disabled = true;
+             btnRecordWaypoint.disabled = false;
+             btnRequestPermsAndStart.disabled = false;
+             btnRequestPermsAndStart.textContent = 'Grant Permissions & Start Race';
+             btnJoinLeaderboard.disabled = false;
+             btnJoinLeaderboardDiscount.disabled = false;
+
+
+             // Go to landing screen
+             showScreen('landing');
+        }
+
+         function stopAllActivity() {
+             // Stops timers and sensor listeners
+             if (timerInterval) clearInterval(timerInterval);
+             timerInterval = null;
+             stopGeolocationWatch();
+             stopOrientationListener();
+             stopCalibrationCompassTest();
+             console.log("All background activity stopped.");
+         }
+
+        /*****************************************
+         *        MATH & HELPER FUNCTIONS        *
+         *****************************************/
+
+        function degreesToRadians(degrees) {
+            return degrees * Math.PI / 180;
+        }
+
+        function radiansToDegrees(radians) {
+            return radians * 180 / Math.PI;
+        }
+
+        /**
+         * Calculates the distance between two points using the Haversine formula.
+         * @param {number} lat1 Latitude of first point
+         * @param {number} lon1 Longitude of first point
+         * @param {number} lat2 Latitude of second point
+         * @param {number} lon2 Longitude of second point
+         * @returns {number} Distance in meters
+         */
+        function calculateDistance(lat1, lon1, lat2, lon2) {
+            const R = 6371e3; // Earth radius in meters
+            const φ1 = degreesToRadians(lat1);
+            const φ2 = degreesToRadians(lat2);
+            const Δφ = degreesToRadians(lat2 - lat1);
+            const Δλ = degreesToRadians(lon2 - lon1);
+
+            const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+                      Math.cos(φ1) * Math.cos(φ2) *
+                      Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+            return R * c; // Distance in meters
+        }
+
+        /**
+         * Calculates the initial bearing (angle) from point 1 to point 2.
+         * @param {number} lat1 Latitude of first point
+         * @param {number} lon1 Longitude of first point
+         * @param {number} lat2 Latitude of second point
+         * @param {number} lon2 Longitude of second point
+         * @returns {number} Bearing in degrees (0-360, 0 = North)
+         */
+        function calculateBearing(lat1, lon1, lat2, lon2) {
+            const φ1 = degreesToRadians(lat1);
+            const λ1 = degreesToRadians(lon1);
+            const φ2 = degreesToRadians(lat2);
+            const λ2 = degreesToRadians(lon2);
+
+            const y = Math.sin(λ2 - λ1) * Math.cos(φ2);
+            const x = Math.cos(φ1) * Math.sin(φ2) -
+                      Math.sin(φ1) * Math.cos(φ2) * Math.cos(λ2 - λ1);
+            const θ = Math.atan2(y, x);
+
+            // Convert bearing to degrees and normalize to 0-360 range
+            const bearing = (radiansToDegrees(θ) + 360) % 360;
+            return bearing;
+        }
+
+        /*****************************************
+         *           EVENT LISTENERS             *
+         *****************************************/
+        document.addEventListener('DOMContentLoaded', () => {
+            if (!initializeSupabase()) {
+                 // Error already shown by initializeSupabase
+                 return;
+            }
+
+            // Landing Screen
+            btnStartUser.addEventListener('click', handleStartUserMode);
+            btnAdmin.addEventListener('click', handleAdminClick);
+
+            // Admin Login Screen
+            btnAdminSubmit.addEventListener('click', handleAdminLogin);
+            btnAdminBack.addEventListener('click', resetToLanding);
+
+            // Admin Record Screen
+            btnRecordWaypoint.addEventListener('click', handleRecordWaypoint);
+            btnSaveTrail.addEventListener('click', handleSaveTrail);
+            btnRecordBack.addEventListener('click', resetToLanding);
+
+            // User Calibrate Screen
+            btnRequestPermsAndStart.addEventListener('click', handleRequestPermsAndStart);
+             btnCalibrateBack.addEventListener('click', resetToLanding);
+
+
+            // User Finish Screen
+            btnJoinLeaderboard.addEventListener('click', handleJoinLeaderboard);
+            btnSkipPrompt1.addEventListener('click', handleSkipPrompt1);
+
+             // User Discount Prompt Screen
+            btnJoinLeaderboardDiscount.addEventListener('click', handleJoinLeaderboardDiscount);
+            btnSkipPrompt2.addEventListener('click', handleSkipPrompt2);
+
+             // Final Leaderboard Screen
+             btnPlayAgain.addEventListener('click', resetToLanding);
+
+             // Error Screen
+             btnErrorBack.addEventListener('click', resetToLanding);
+
+
+             // Initial setup
+             showScreen('landing');
+
+             console.log("App initialized.");
+        });
+
+        /* Deployment Instructions:
+         *
+         * 1. Update Supabase Credentials:
+         *    - Find the `SUPABASE_URL` and `SUPABASE_ANON_KEY` constants near the top of this script.
+         *    - Replace the placeholder values `"https://YOUR_PROJECT_ID.supabase.co"` and `"YOUR_ANON_KEY"`
+         *      with the actual values from your Supabase project settings (Project Settings > API).
+         *
+         * 2. Define Database Schema in Supabase:
+         *    - Go to your Supabase project dashboard.
+         *    - Use the SQL Editor (Database > SQL Editor > New Query).
+         *    - Paste and run the following SQL commands if the tables don't exist:
+         *
+         *      CREATE TABLE IF NOT EXISTS trails (
+         *        id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+         *        name text NOT NULL,
+         *        waypoints jsonb NOT NULL,
+         *        created_at timestamp with time zone DEFAULT now()
+         *      );
+         *
+         *      CREATE TABLE IF NOT EXISTS leaderboard (
+         *        id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+         *        name text,
+         *        email text,
+         *        time_in_seconds numeric,
+         *        created_at timestamp with time zone DEFAULT now()
+         *      );
+         *
+         *    - Make sure Row Level Security (RLS) is either disabled for these tables (for quick testing)
+         *      OR configured appropriately. For a public app:
+         *       - `trails` table: Allow public `select`. Allow authenticated `insert`/`update` (or use admin role).
+         *       - `leaderboard` table: Allow public `select`. Allow public `insert`.
+         *      Example basic RLS policies (run in SQL Editor):
+         *
+         *      -- Make sure RLS is enabled for the tables first in the Supabase UI (Authentication > Policies)
+         *      -- Trails Table Policies
+         *      -- Allow anyone to read trails
+         *      CREATE POLICY "Allow public read access on trails" ON public.trails FOR SELECT USING (true);
+         *      -- Allow only authenticated users (or a specific role) to create/update trails (adjust as needed)
+         *      -- For simplicity here, allowing any authenticated user to manage the single trail
+         *      -- In production, you might restrict this to a specific user ID or custom role.
+         *      CREATE POLICY "Allow authenticated users full access on trails" ON public.trails FOR ALL USING (auth.role() = 'authenticated') WITH CHECK (auth.role() = 'authenticated');
+         *
+         *      -- Leaderboard Table Policies
+         *      -- Allow anyone to read the leaderboard
+         *      CREATE POLICY "Allow public read access on leaderboard" ON public.leaderboard FOR SELECT USING (true);
+         *      -- Allow anyone to insert their score (no update/delete needed usually for basic leaderboard)
+         *      CREATE POLICY "Allow public insert access on leaderboard" ON public.leaderboard FOR INSERT WITH CHECK (true);
+         *
+         * 3. Deploying (e.g., GitHub Pages):
+         *    - Create a new repository on GitHub.
+         *    - Upload this single HTML file to the repository (you can name it `index.html`).
+         *    - Go to the repository's Settings > Pages.
+         *    - Under "Build and deployment", select "Deploy from a branch" as the Source.
+         *    - Choose the branch you uploaded the file to (e.g., `main`).
+         *    - Select the `/ (root)` folder.
+         *    - Click "Save".
+         *    - GitHub will build and deploy your page. The URL will be shown on the Pages settings screen
+         *      (usually `https://<your-username>.github.io/<repository-name>/`).
+         *    - Note: Ensure your Supabase API keys are correctly embedded in the `index.html` file you upload.
+         *      For better security in larger projects, consider using environment variables during a build step,
+         *      but for a simple single file deployment like this, embedding is common (use the ANON key only).
+         *
+         * 4. Testing:
+         *    - Open the deployed URL on a mobile device.
+         *    - Use Admin mode (code 9090) first to record a test trail (e.g., walk around your house).
+         *    - Save the trail.
+         *    - Go back and start the race as a user.
+         *    - Test the prompts and leaderboard submission.
+         *    - Record the actual bar trail on location using Admin mode.
+         */
+    </script>
+</body>
+</html>
