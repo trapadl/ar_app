@@ -714,7 +714,7 @@
                 xhr.send(videoBlob);
                 videoBlob = null; // Clear blob reference after sending (browser holds it)
 
-            } catch (error) {
+            try {
                 console.error("upload setup failed:", error);
                 uploadStatus.textContent = `video upload failed: ${error.message.substring(0,50)}`; 
                 uploadStatus.className = 'error-message';
