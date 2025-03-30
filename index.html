@@ -328,6 +328,7 @@
         const SUPABASE_URL = "https://hdagjajchjxsyytdlqzi.supabase.co"; // <-- REPLACE THIS
         const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhkYWdqYWpjaGp4c3l5dGRscXppIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDMyOTE3NjEsImV4cCI6MjA1ODg2Nzc2MX0.8A5dhEKfDbUOeouvp_e32rMR-NUwnUjBTuP-8tEtsYU"; // <-- REPLACE THIS
 
+
         // --- ADMIN ---
         const ADMIN_CODE = "9090"; // The 4-digit code for admin access
 
@@ -398,7 +399,9 @@
         /*****************************************
          *           APPLICATION STATE           *
          *****************************************/
-        let supabase = null;
+        // Use 'supabaseClient' for the initialized client instance
+        // The global 'supabase' comes from the Supabase script tag
+        let supabaseClient = null; // MODIFIED: Renamed variable for the client instance
         let currentScreen = 'landing';
         let isAdmin = false;
         let recordedWaypoints = []; // For admin mode
@@ -424,13 +427,29 @@
                  showErrorScreen("Application Error: Supabase credentials are missing. Please configure them in the HTML source.");
                  return false;
             }
+
+            // MODIFIED: Check if the global Supabase library loaded correctly
+            if (typeof supabase === 'undefined' || supabase === null || typeof supabase.createClient !== 'function') {
+                console.error("Supabase library (global 'supabase' object or createClient function) not found. Check script tag and network connection.");
+                showErrorScreen("Failed to initialize database connection: Supabase library not loaded properly.");
+                return false;
+            }
+
             try {
-                 supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                 // MODIFIED: Use the GLOBAL 'supabase' object to call createClient
+                 // Assign the instance to our specific variable 'supabaseClient'
+                 supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
                  console.log("Supabase client initialized.");
                  return true;
             } catch (error) {
                  console.error("Error initializing Supabase:", error);
-                 showErrorScreen(`Failed to initialize database connection: ${error.message}`);
+                 // MODIFIED: More specific error check
+                 if (error instanceof TypeError && error.message.includes('null') && error.message.includes('createClient')) {
+                     showErrorScreen(`Failed to initialize database connection: Supabase library object issue. Check console.`);
+                 } else {
+                    showErrorScreen(`Failed to initialize database connection: ${error.message}`);
+                 }
                  return false;
             }
         }
@@ -537,7 +556,8 @@
                 adminRecordStatus.textContent = "No waypoints to save.";
                 return;
             }
-            if (!supabase) {
+            // MODIFIED: Check supabaseClient
+            if (!supabaseClient) {
                  showErrorScreen("Database connection not available.");
                  return;
             }
@@ -547,7 +567,8 @@
 
             try {
                 // Check if a trail already exists. We'll update the first one we find.
-                let { data: existingTrails, error: fetchError } = await supabase
+                // MODIFIED: Use supabaseClient
+                let { data: existingTrails, error: fetchError } = await supabaseClient
                     .from('trails')
                     .select('id')
                     .limit(1);
@@ -564,7 +585,8 @@
                 if (existingTrails && existingTrails.length > 0) {
                     // Update existing trail
                     console.log("Updating existing trail with ID:", existingTrails[0].id);
-                    const { data, error } = await supabase
+                    // MODIFIED: Use supabaseClient
+                    const { data, error } = await supabaseClient
                         .from('trails')
                         .update({ waypoints: recordedWaypoints, name: 'Bar Trail' }) // Ensure name is set too
                         .eq('id', existingTrails[0].id)
@@ -574,7 +596,8 @@
                 } else {
                     // Insert new trail
                     console.log("Inserting new trail.");
-                     const { data, error } = await supabase
+                     // MODIFIED: Use supabaseClient
+                     const { data, error } = await supabaseClient
                         .from('trails')
                         .insert([trailData])
                         .select();
@@ -708,7 +731,8 @@
 
 
         async function fetchTrailAndStartRace(orientationAvailable) {
-            if (!supabase) {
+             // MODIFIED: Check supabaseClient
+            if (!supabaseClient) {
                  showErrorScreen("Database connection not available.");
                  btnRequestPermsAndStart.disabled = false; // Re-enable button
                  btnRequestPermsAndStart.textContent = 'Grant Permissions & Start Race';
@@ -719,7 +743,8 @@
             console.log("Fetching trail...");
 
             try {
-                let { data, error } = await supabase
+                 // MODIFIED: Use supabaseClient
+                let { data, error } = await supabaseClient
                     .from('trails')
                     .select('waypoints')
                     .limit(1); // Get the first (and only) trail
@@ -763,9 +788,10 @@
                 if (orientationAvailable) {
                     startOrientationListener();
                     compassInstruction.textContent = "Follow the arrow:";
+                    compassContainer.style.display = 'block'; // Ensure compass visible
                 } else {
                     compassInstruction.textContent = "Head towards the next waypoint:";
-                     compassContainer.style.display = 'none'; // Hide compass visuals if no sensor
+                    compassContainer.style.display = 'none'; // Hide compass visuals if no sensor
                 }
 
             } catch (error) {
@@ -1007,7 +1033,8 @@
          }
 
         async function saveLeaderboardEntry(name, email, time, statusElement) {
-             if (!supabase) {
+             // MODIFIED: Check supabaseClient
+             if (!supabaseClient) {
                  showErrorScreen("Database connection not available.");
                  return;
              }
@@ -1016,7 +1043,8 @@
              btnJoinLeaderboardDiscount.disabled = true;
 
              try {
-                 const { data, error } = await supabase
+                  // MODIFIED: Use supabaseClient
+                 const { data, error } = await supabaseClient
                      .from('leaderboard')
                      .insert([
                          { name: name, email: email, time_in_seconds: time }
@@ -1041,7 +1069,8 @@
         }
 
         async function showFinalLeaderboard(didJoin) {
-             if (!supabase) {
+             // MODIFIED: Check supabaseClient
+             if (!supabaseClient) {
                   showErrorScreen("Database connection not available.");
                   return;
              }
@@ -1051,7 +1080,8 @@
              showScreen('finalLeaderboard');
 
              try {
-                 let { data: leaderboardData, error } = await supabase
+                 // MODIFIED: Use supabaseClient
+                 let { data: leaderboardData, error } = await supabaseClient
                      .from('leaderboard')
                      .select('name, time_in_seconds')
                      .order('time_in_seconds', { ascending: true })
@@ -1263,25 +1293,7 @@
          *      );
          *
          *    - Make sure Row Level Security (RLS) is either disabled for these tables (for quick testing)
-         *      OR configured appropriately. For a public app:
-         *       - `trails` table: Allow public `select`. Allow authenticated `insert`/`update` (or use admin role).
-         *       - `leaderboard` table: Allow public `select`. Allow public `insert`.
-         *      Example basic RLS policies (run in SQL Editor):
-         *
-         *      -- Make sure RLS is enabled for the tables first in the Supabase UI (Authentication > Policies)
-         *      -- Trails Table Policies
-         *      -- Allow anyone to read trails
-         *      CREATE POLICY "Allow public read access on trails" ON public.trails FOR SELECT USING (true);
-         *      -- Allow only authenticated users (or a specific role) to create/update trails (adjust as needed)
-         *      -- For simplicity here, allowing any authenticated user to manage the single trail
-         *      -- In production, you might restrict this to a specific user ID or custom role.
-         *      CREATE POLICY "Allow authenticated users full access on trails" ON public.trails FOR ALL USING (auth.role() = 'authenticated') WITH CHECK (auth.role() = 'authenticated');
-         *
-         *      -- Leaderboard Table Policies
-         *      -- Allow anyone to read the leaderboard
-         *      CREATE POLICY "Allow public read access on leaderboard" ON public.leaderboard FOR SELECT USING (true);
-         *      -- Allow anyone to insert their score (no update/delete needed usually for basic leaderboard)
-         *      CREATE POLICY "Allow public insert access on leaderboard" ON public.leaderboard FOR INSERT WITH CHECK (true);
+         *      OR configured appropriately. Use the SQL provided separately for recommended RLS policies.
          *
          * 3. Deploying (e.g., GitHub Pages):
          *    - Create a new repository on GitHub.
