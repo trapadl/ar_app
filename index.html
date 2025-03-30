@@ -157,7 +157,7 @@
                     </table>
                 </div>
                 <p class="leaderboard-prompt">want to add your time to the leaderboard?</p>
-                <p id="video-email-incentive" class="info-message" style="display:none;">(we'll email a link to your recorded video!)</p>
+                <p id="video-email-incentive" class="info-message" style="display:none;">(your video will be available to download after joining!)</p>
                 
                 <div id="upload-status-container" style="width: 100%; margin-bottom: 10px;">
                     <p id="upload-status" class="info-message" style="margin-bottom: 5px;"></p>
@@ -181,7 +181,18 @@
              <div class="panel-content-container">
                  <div class="logo-placeholder logo-fixed"><img src="./Asset 2.png" alt="your bar logo"></div>
                  <h2 id="final-message">you're on the leaderboard!</h2>
-                 <p id="final-email-message" class="success-message" style="display:none;">check your email for the video link!</p>
+                 
+                 <!-- Video download section - only shown when video is available -->
+                 <div id="video-download-container" style="width: 100%; margin: 15px 0; display: none; text-align: center;">
+                     <p class="success-message" style="text-align: center;">Your video is ready!</p>
+                     <button id="btn-download-video" class="primary-button" style="background-color: #80cbc4; margin-top: 10px;">
+                         Download Your Video
+                     </button>
+                     <p class="info-message" style="text-align: center; font-size: 12px; margin-top: 5px;">
+                         (Video available for 24 hours)
+                     </p>
+                 </div>
+                 
                  <h3>top times</h3>
                  <div id="leaderboard-container">
                      <table id="leaderboard-table">
@@ -791,16 +802,12 @@
                  entryId = leaderboardData?.id; 
                  console.log("leaderboard entry saved, id:", entryId);
                  
-                 if (userWantsToRecord && lastUploadedFilePath) {
-                     statusElement.textContent = "score saved, preparing video link...";
-                     await invokeEmailVideoLinkFunction(lastUploadedFilePath, email, name, entryId);
-                 } else { 
-                     statusElement.textContent = "score saved!"; 
-                     statusElement.className = "success-message";
-                 }
+                 statusElement.textContent = "score saved!"; 
+                 statusElement.className = "success-message";
+                 
                  showFinalLeaderboard(true);
              } catch (error) {
-                 console.error("error saving leaderboard or triggering email:", error);
+                 console.error("error saving leaderboard entry:", error);
                  statusElement.textContent = `${error.message.substring(0,50)}`;
                  statusElement.className = "error-message";
                  joinButton.disabled = false;
@@ -831,7 +838,26 @@
         async function showFinalLeaderboard(didJoin) {
              if (!supabaseClient) { showErrorPanel("database connection lost."); return; }
              finalMessage.textContent = didJoin ? "you're on the leaderboard!" : "top times";
-             finalEmailMessage.style.display = (didJoin && userWantsToRecord && lastUploadedFilePath) ? 'block' : 'none';
+             
+             // Check if we have a video to download
+             const videoDownloadContainer = document.getElementById('video-download-container');
+             const downloadButton = document.getElementById('btn-download-video');
+             
+             if (lastUploadedFilePath && didJoin) {
+                 // Show download button
+                 videoDownloadContainer.style.display = 'block';
+                 
+                 // Construct video URL
+                 const videoUrl = `${SUPABASE_URL}/storage/v1/object/public/${STORAGE_BUCKET_NAME}/${lastUploadedFilePath}`;
+                 
+                 // Set up download button
+                 downloadButton.addEventListener('click', () => {
+                     window.open(videoUrl, '_blank');
+                 });
+             } else {
+                 videoDownloadContainer.style.display = 'none';
+             }
+             
              leaderboardBodyFinal.innerHTML = '<tr><td colspan="3" style="text-align:center;">loading scores...</td></tr>';
              showPanel('finalLeaderboard');
              try {
