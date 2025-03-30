@@ -14,6 +14,59 @@
         body { display: flex; justify-content: center; align-items: flex-start; padding-top: 0; }
         #app { width: 100%; max-width: 100%; height: 100%; max-height: 100vh; background-color: #1e1e1e; padding: 0; border: none; box-shadow: none; text-align: center; display: flex; flex-direction: column; position: relative; }
 
+        /* Directions button */
+        .directions-btn {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: none;
+            border: none;
+            color: #555;
+            font-size: 12px;
+            cursor: pointer;
+            text-decoration: underline;
+            z-index: 20;
+        }
+        .directions-btn:hover {
+            color: #80cbc4;
+        }
+        
+        /* Directions modal */
+        .directions-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            z-index: 100;
+            justify-content: center;
+            align-items: center;
+        }
+        .directions-content {
+            background-color: #1e1e1e;
+            border: 1px solid #333;
+            padding: 20px;
+            width: 80%;
+            max-width: 400px;
+            border-radius: 5px;
+            position: relative;
+        }
+        .close-directions {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            color: #666;
+            font-size: 20px;
+            cursor: pointer;
+            background: none;
+            border: none;
+        }
+        .close-directions:hover {
+            color: #e0e0e0;
+        }
+
         /* Logo Placeholder */
         .logo-placeholder { width: 100px; height: auto; z-index: 15; opacity: 0.8; margin: 0 auto 15px auto; }
         .logo-placeholder img { max-width: 100%; height: auto; display: block; }
@@ -107,6 +160,21 @@
 </head>
 <body>
     <div id="app">
+        <!-- Directions button -->
+        <button id="show-directions-btn" class="directions-btn">just show me how to get there</button>
+        
+        <!-- Directions Modal -->
+        <div id="directions-modal" class="directions-modal">
+            <div class="directions-content">
+                <button class="close-directions">&times;</button>
+                <h3 style="margin-bottom: 15px;">how to find trap.</h3>
+                <p>1. head west on currie st</p>
+                <p>2. turn right onto burnett st</p>
+                <p>3. turn right onto cold chisel lane</p>
+                <p>4. trap. cocktail bar is the open doors on your right</p>
+            </div>
+        </div>
+        
         <!-- 1. Landing Panel -->
         <div id="panel-landing" class="panel active">
             <div class="panel-content-container">
@@ -157,20 +225,21 @@
                     </table>
                 </div>
                 <p class="leaderboard-prompt">want to add your time to the leaderboard?</p>
-                <p id="video-email-incentive" class="info-message" style="display:none;">(your video will be available to download after joining!)</p>
+                <p id="video-email-incentive" class="info-message" style="display:none;">(your video will be available to watch after joining!)</p>
                 
-                <div id="upload-status-container" style="width: 100%; margin-bottom: 10px;">
+                <label for="user-name">name:</label>
+                <input type="text" id="user-name" placeholder="your name" autocomplete="off">
+                <label for="user-email">email:</label>
+                <input type="email" id="user-email" placeholder="your.email@example.com" autocomplete="off">
+                
+                <div id="upload-status-container" style="width: 100%; margin: 10px 0;">
                     <p id="upload-status" class="info-message" style="margin-bottom: 5px;"></p>
                     <div id="upload-progress-container" style="display: none;">
                         <div id="upload-progress-bar"></div>
                     </div>
                 </div>
                 
-                <label for="user-name">name:</label>
-                <input type="text" id="user-name" placeholder="your name" autocomplete="off">
-                <label for="user-email">email:</label>
-                <input type="email" id="user-email" placeholder="your.email@example.com" autocomplete="off">
-                <button id="btn-join-leaderboard">join leaderboard</button>
+                <button id="btn-join-leaderboard" style="display: none;">join leaderboard</button>
                 <p id="leaderboard-submit-status" class="info-message"></p>
                 <p class="info-message">(if not, simply close this page)</p>
             </div>
@@ -182,12 +251,12 @@
                  <div class="logo-placeholder logo-fixed"><img src="./Asset 2.png" alt="your bar logo"></div>
                  <h2 id="final-message">you're on the leaderboard!</h2>
                  
-                 <!-- Video download section - only shown when video is available -->
-                 <div id="video-download-container" style="width: 100%; margin: 15px 0; display: none; text-align: center;">
-                     <p class="success-message" style="text-align: center;">your video is ready!</p>
-                     <a id="btn-download-video" class="primary-button" style="background-color: #80cbc4; margin-top: 10px; display: inline-block; padding: 10px 20px; border-radius: 5px; color: #121212; text-decoration: none; font-weight: bold;" download="bar-challenge-video.webm">
-                         download your video
-                     </a>
+                 <!-- Video player section - only shown when video is available -->
+                 <div id="video-download-container" style="width: 100%; margin: 15px 0; display: none;">
+                     <p class="success-message" style="text-align: center;">your video:</p>
+                     <video id="recorded-video-player" controls style="width: 100%; max-width: 400px; border-radius: 4px; margin: 10px 0;">
+                         Your browser doesn't support video playback.
+                     </video>
                      <p class="info-message" style="text-align: center; font-size: 12px; margin-top: 5px;">
                          (video available for 24 hours)
                      </p>
@@ -313,9 +382,30 @@
                 userWantsToRecord = e.target.checked;
                 recordWarning.style.display = userWantsToRecord ? 'block' : 'none';
             });
-             quizSubmitBtn.addEventListener('click', handleAnswerSubmit);
-             quizAnswerInput.addEventListener('input', handleAnswerInput);
-             quizAnswerInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') handleAnswerSubmit(); });
+            
+            // Setup directions modal
+            const directionsBtn = document.getElementById('show-directions-btn');
+            const directionsModal = document.getElementById('directions-modal');
+            const closeDirections = document.querySelector('.close-directions');
+            
+            directionsBtn.addEventListener('click', () => {
+                directionsModal.style.display = 'flex';
+            });
+            
+            closeDirections.addEventListener('click', () => {
+                directionsModal.style.display = 'none';
+            });
+            
+            // Close modal when clicking outside of it
+            directionsModal.addEventListener('click', (e) => {
+                if (e.target === directionsModal) {
+                    directionsModal.style.display = 'none';
+                }
+            });
+            
+            quizSubmitBtn.addEventListener('click', handleAnswerSubmit);
+            quizAnswerInput.addEventListener('input', handleAnswerInput);
+            quizAnswerInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') handleAnswerSubmit(); });
             btnJoinLeaderboard.addEventListener('click', handleJoinLeaderboard);
             if (btnPlayAgain) { btnPlayAgain.addEventListener('click', resetToLanding); }
             btnErrorBack.addEventListener('click', resetToLanding);
@@ -618,6 +708,7 @@
                     lastUploadedFilePath = null;
                     uploadProgressContainer.style.display = 'none';
                     btnJoinLeaderboard.disabled = false; // Re-enable button on finish panel
+                    btnJoinLeaderboard.style.display = 'block'; // Show join button even on failure
                 };
 
                 xhr.send(videoBlob);
@@ -631,6 +722,7 @@
                 uploadInProgress = false; 
                 uploadProgressContainer.style.display = 'none';
                 btnJoinLeaderboard.disabled = false;
+                btnJoinLeaderboard.style.display = 'block'; // Show join button even on failure
                 stopRecordingCleanup();
             }
         }
@@ -852,22 +944,21 @@
              if (!supabaseClient) { showErrorPanel("database connection lost."); return; }
              finalMessage.textContent = didJoin ? "you're on the leaderboard!" : "top times";
              
-             // Check if we have a video to download
-             const videoDownloadContainer = document.getElementById('video-download-container');
-             const downloadButton = document.getElementById('btn-download-video');
+             // Check if we have a video to display
+             const videoContainer = document.getElementById('video-download-container');
+             const videoPlayer = document.getElementById('recorded-video-player');
              
              if (lastUploadedFilePath && didJoin) {
-                 // Show download button
-                 videoDownloadContainer.style.display = 'block';
+                 // Show video player
+                 videoContainer.style.display = 'block';
                  
                  // Construct video URL
                  const videoUrl = `${SUPABASE_URL}/storage/v1/object/public/${STORAGE_BUCKET_NAME}/${lastUploadedFilePath}`;
                  
-                 // Set up download button as an anchor with download attribute
-                 downloadButton.href = videoUrl;
-                 // The download attribute tells the browser to download instead of navigating
+                 // Set source for video player
+                 videoPlayer.src = videoUrl;
              } else {
-                 videoDownloadContainer.style.display = 'none';
+                 videoContainer.style.display = 'none';
              }
              
              leaderboardBodyFinal.innerHTML = '<tr><td colspan="3" style="text-align:center;">loading scores...</td></tr>';
