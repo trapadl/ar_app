@@ -81,7 +81,10 @@
         .panel-content-container { display: flex; flex-direction: column; align-items: center; width: 100%; max-width: 450px; padding: 20px; }
 
         /* Leaderboard Styles */
-        #leaderboard-container { margin-top: 15px; width: 100%; max-height: 40vh; overflow-y: auto; border: 1px solid #444; background-color: #2c2c2c; }
+        #leaderboard-container { margin-top: 15px; width: 100%; max-height: 250px; overflow-y: auto; border: 1px solid #444; background-color: #2c2c2c; }
+        /* Initially show only top 5 results */
+        .leaderboard-expanded { max-height: 400px; transition: max-height 0.3s ease-in-out; }
+        .show-more-btn { background: none; border: none; color: #80cbc4; font-size: 13px; cursor: pointer; padding: 5px; margin: 5px 0; width: auto; text-decoration: underline; }
         #leaderboard-table { width: 100%; border-collapse: collapse; }
         #leaderboard-table th, #leaderboard-table td { border: 1px solid #555; padding: 6px; text-align: left; color: #e0e0e0; font-size: 14px; }
         #leaderboard-table th { background-color: #383838; position: sticky; top: 0; z-index: 1; color: #ffffff; }
@@ -207,7 +210,8 @@
          *****************************************/
          const SUPABASE_URL = "https://hdagjajchjxsyytdlqzi.supabase.co";
          const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhkYWdqYWpjaGp4c3l5dGRscXppIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDMyOTE3NjEsImV4cCI6MjA1ODg2Nzc2MX0.8A5dhEKfDbUOeouvp_e32rMR-NUwnUjBTuP-8tEtsYU";
-         const LEADERBOARD_LIMIT = 10;
+         const INITIAL_LEADERBOARD_LIMIT = 5;
+         const EXTENDED_LEADERBOARD_LIMIT = 20;
          const STORAGE_BUCKET_NAME = "racerecordings";
          const EMAIL_FUNCTION_NAME = 'send-video-link'; // <<< Your Supabase Edge Function name
 
@@ -563,7 +567,17 @@
                         videoEmailIncentive.style.display = 'block'; // Remind them they'll get the video
                     } else {
                         console.error("upload failed (xhr):", xhr.status, xhr.responseText);
-                        let errorMsg = `http status ${xhr.status}`; try { errorMsg = JSON.parse(xhr.responseText).message || errorMsg; } catch(e){}
+                        let errorMsg = `http status ${xhr.status}`;
+                        try { 
+                            const responseObj = JSON.parse(xhr.responseText);
+                            errorMsg = responseObj.message || errorMsg;
+                            
+                            // Check specifically for row-level security violations
+                            if (errorMsg.includes("row-level security")) {
+                                errorMsg = "Permission denied - please ask bar staff for help";
+                            }
+                        } catch(e){}
+                        
                         uploadStatus.textContent = `video upload failed: ${errorMsg.substring(0,50)}`; 
                         uploadStatus.className = 'error-message';
                         lastUploadedFilePath = null; // Clear path on failure
@@ -643,9 +657,14 @@
              showPanel('finish'); // Show finish panel
 
              try {
-                 let { data, error } = await supabaseClient.from('leaderboard').select('name, time_in_seconds').order('time_in_seconds', { ascending: true }).limit(LEADERBOARD_LIMIT);
+                 let { data, error } = await supabaseClient.from('leaderboard')
+                     .select('name, time_in_seconds')
+                     .order('time_in_seconds', { ascending: true })
+                     .limit(INITIAL_LEADERBOARD_LIMIT);
+                 
                  if (error) throw error;
                  leaderboardBodyBlurred.innerHTML = '';
+                 
                  if (data && data.length > 0) {
                      data.forEach((entry, index) => {
                          const row = leaderboardBodyBlurred.insertRow();
@@ -656,8 +675,56 @@
                          timeCell.textContent = parseFloat(entry.time_in_seconds).toFixed(1);
                          timeCell.classList.add('blurred-text', 'blurred-time');
                      });
-                 } else { leaderboardBodyBlurred.innerHTML = '<tr><td colspan="3" style="text-align:center;">be the first!</td></tr>'; }
-             } catch (error) { console.error("error fetching leaderboard for blurring:", error); leaderboardBodyBlurred.innerHTML = `<tr><td colspan="3" style="text-align:center; color: #ff8a80;">error loading scores</td></tr>`; }
+                     
+                     // Check if there might be more scores
+                     if (data.length === INITIAL_LEADERBOARD_LIMIT) {
+                         // Add a "See more" button after the table
+                         const showMoreBtn = document.createElement('button');
+                         showMoreBtn.textContent = 'Show more scores...';
+                         showMoreBtn.className = 'show-more-btn';
+                         showMoreBtn.onclick = loadMoreBlurredScores;
+                         const container = document.getElementById('leaderboard-container');
+                         container.parentNode.insertBefore(showMoreBtn, container.nextSibling);
+                     }
+                 } else { 
+                     leaderboardBodyBlurred.innerHTML = '<tr><td colspan="3" style="text-align:center;">be the first!</td></tr>';
+                 }
+             } catch (error) { 
+                 console.error("error fetching leaderboard for blurring:", error); 
+                 leaderboardBodyBlurred.innerHTML = `<tr><td colspan="3" style="text-align:center; color: #ff8a80;">error loading scores</td></tr>`; 
+             }
+        }
+        
+        async function loadMoreBlurredScores() {
+            try {
+                const container = document.getElementById('leaderboard-container');
+                container.classList.add('leaderboard-expanded');
+                
+                let { data, error } = await supabaseClient.from('leaderboard')
+                    .select('name, time_in_seconds')
+                    .order('time_in_seconds', { ascending: true })
+                    .limit(EXTENDED_LEADERBOARD_LIMIT);
+                
+                if (error) throw error;
+                leaderboardBodyBlurred.innerHTML = '';
+                
+                if (data && data.length > 0) {
+                    data.forEach((entry, index) => {
+                        const row = leaderboardBodyBlurred.insertRow();
+                        row.insertCell().textContent = index + 1;
+                        const nameCell = row.insertCell();
+                        nameCell.textContent = entry.name ? entry.name.substring(0, 30) : '?????';
+                        const timeCell = row.insertCell();
+                        timeCell.textContent = parseFloat(entry.time_in_seconds).toFixed(1);
+                        timeCell.classList.add('blurred-text', 'blurred-time');
+                    });
+                }
+                
+                // Remove the button after expanding
+                this.style.display = 'none';
+            } catch (error) {
+                console.error("Error loading more scores:", error);
+            }
         }
 
         function handleJoinLeaderboard() {
@@ -692,10 +759,39 @@
              statusElement.className = "info-message";
              joinButton.disabled = true;
              let entryId = null;
+             
+             // Construct bucket URL if we have a file path
+             let videoBucketUrl = null;
+             if (lastUploadedFilePath) {
+                 videoBucketUrl = `${SUPABASE_URL}/storage/v1/object/public/${STORAGE_BUCKET_NAME}/${lastUploadedFilePath}`;
+             }
+             
              try {
-                 const { data: leaderboardData, error: leaderboardError } = await supabaseClient.from('leaderboard').insert([{ name, email, time_in_seconds: time }]).select('id').single();
-                 if (leaderboardError) throw leaderboardError;
-                 entryId = leaderboardData?.id; console.log("leaderboard entry saved, id:", entryId);
+                 // Include the video bucket URL in the leaderboard entry
+                 const leaderboardEntry = { 
+                     name, 
+                     email, 
+                     time_in_seconds: time,
+                     video_url: videoBucketUrl
+                 };
+                 
+                 const { data: leaderboardData, error: leaderboardError } = await supabaseClient
+                     .from('leaderboard')
+                     .insert([leaderboardEntry])
+                     .select('id')
+                     .single();
+                     
+                 if (leaderboardError) {
+                     if (leaderboardError.message && leaderboardError.message.includes("row-level security")) {
+                         console.error("Row-level security policy error:", leaderboardError);
+                         throw new Error("Access denied - please contact bar staff for help");
+                     }
+                     throw leaderboardError;
+                 }
+                 
+                 entryId = leaderboardData?.id; 
+                 console.log("leaderboard entry saved, id:", entryId);
+                 
                  if (userWantsToRecord && lastUploadedFilePath) {
                      statusElement.textContent = "score saved, preparing video link...";
                      await invokeEmailVideoLinkFunction(lastUploadedFilePath, email, name, entryId);
@@ -706,7 +802,7 @@
                  showFinalLeaderboard(true);
              } catch (error) {
                  console.error("error saving leaderboard or triggering email:", error);
-                 statusElement.textContent = `error saving: ${error.message.substring(0,50)}`;
+                 statusElement.textContent = `${error.message.substring(0,50)}`;
                  statusElement.className = "error-message";
                  joinButton.disabled = false;
              }
@@ -740,9 +836,14 @@
              leaderboardBodyFinal.innerHTML = '<tr><td colspan="3" style="text-align:center;">loading scores...</td></tr>';
              showPanel('finalLeaderboard');
              try {
-                 let { data, error } = await supabaseClient.from('leaderboard').select('name, time_in_seconds').order('time_in_seconds', { ascending: true }).limit(LEADERBOARD_LIMIT);
+                 let { data, error } = await supabaseClient.from('leaderboard')
+                     .select('name, time_in_seconds')
+                     .order('time_in_seconds', { ascending: true })
+                     .limit(INITIAL_LEADERBOARD_LIMIT);
+                 
                  if (error) throw error;
                  leaderboardBodyFinal.innerHTML = '';
+                 
                  if (data && data.length > 0) {
                      data.forEach((entry, index) => {
                          const row = leaderboardBodyFinal.insertRow();
@@ -750,8 +851,53 @@
                          row.insertCell().textContent = entry.name ? entry.name.substring(0, 30) : 'anonymous';
                          row.insertCell().textContent = parseFloat(entry.time_in_seconds).toFixed(1);
                      });
-                 } else { leaderboardBodyFinal.innerHTML = '<tr><td colspan="3" style="text-align:center;">be the first!</td></tr>'; }
-             } catch (error) { console.error("error fetching final leaderboard:", error); leaderboardBodyFinal.innerHTML = `<tr><td colspan="3" style="text-align:center; color: #ff8a80;">error loading scores</td></tr>`; }
+                     
+                     // Check if there might be more scores
+                     if (data.length === INITIAL_LEADERBOARD_LIMIT) {
+                         // Add a "See more" button after the table
+                         const showMoreBtn = document.createElement('button');
+                         showMoreBtn.textContent = 'Show more scores...';
+                         showMoreBtn.className = 'show-more-btn';
+                         showMoreBtn.onclick = loadMoreFinalScores;
+                         const container = document.querySelector('#panel-final-leaderboard #leaderboard-container');
+                         container.parentNode.insertBefore(showMoreBtn, container.nextSibling);
+                     }
+                 } else { 
+                     leaderboardBodyFinal.innerHTML = '<tr><td colspan="3" style="text-align:center;">be the first!</td></tr>'; 
+                 }
+             } catch (error) { 
+                 console.error("error fetching final leaderboard:", error); 
+                 leaderboardBodyFinal.innerHTML = `<tr><td colspan="3" style="text-align:center; color: #ff8a80;">error loading scores</td></tr>`; 
+             }
+        }
+        
+        async function loadMoreFinalScores() {
+            try {
+                const container = document.querySelector('#panel-final-leaderboard #leaderboard-container');
+                container.classList.add('leaderboard-expanded');
+                
+                let { data, error } = await supabaseClient.from('leaderboard')
+                    .select('name, time_in_seconds')
+                    .order('time_in_seconds', { ascending: true })
+                    .limit(EXTENDED_LEADERBOARD_LIMIT);
+                
+                if (error) throw error;
+                leaderboardBodyFinal.innerHTML = '';
+                
+                if (data && data.length > 0) {
+                    data.forEach((entry, index) => {
+                        const row = leaderboardBodyFinal.insertRow();
+                        row.insertCell().textContent = index + 1;
+                        row.insertCell().textContent = entry.name ? entry.name.substring(0, 30) : 'anonymous';
+                        row.insertCell().textContent = parseFloat(entry.time_in_seconds).toFixed(1);
+                    });
+                }
+                
+                // Remove the button after expanding
+                this.style.display = 'none';
+            } catch (error) {
+                console.error("Error loading more scores:", error);
+            }
         }
 
         /*****************************************
