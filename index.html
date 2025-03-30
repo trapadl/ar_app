@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>bar challenge quiz - video upload</title>
+    <title>the trap. test</title>
     <!-- Import Supabase Client Library -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
@@ -115,7 +115,7 @@
                 <p style="text-align: center;">follow the instructions and answer the questions to find something cool..</p>
                 <div style="margin: 15px 0; text-align: center;">
                     <input type="checkbox" id="record-checkbox" style="vertical-align: middle;" checked>
-                    <label for="record-checkbox" style="display: inline; margin-left: 5px; max-width: none; text-align: center;">record your experience (optional)</label>
+                    <label for="record-checkbox" style="display: inline; margin-left: 5px; max-width: none; text-align: center;">use your camera to record your experience - you know, for the memories.</label>
                 </div>
                 <p id="record-warning" class="info-message" style="font-size: 12px; text-align: center;">requires camera & microphone permission</p>
                 <button id="btn-start-quiz">start.</button>
@@ -125,7 +125,6 @@
         <!-- 2. Quiz Panel -->
         <div id="panel-quiz" class="panel">
             <video id="camera-feed" playsinline autoplay muted style="display: none;"></video>
-            <img id="video-watermark" src="./Asset 2.png" alt="logo watermark">
             <div id="quiz-timer-overlay-container" style="display: none;">time: <span id="timer-display-no-video">0.0</span>s</div>
             <div id="quiz-content-overlay" style="display: none;">
                 <div class="quiz-overlay-top">
@@ -146,8 +145,8 @@
         <!-- 3. Finish Panel -->
         <div id="panel-finish" class="panel">
             <div class="panel-content-container">
-                <div class="logo-placeholder logo-fixed"><img src="./Asset 2.png" alt="your bar logo"></div>
-                <h2>challenge complete!</h2>
+                <div class="logo-placeholder"><img src="./Asset 2.png" alt="your bar logo"></div>
+                <h2>test complete!</h2>
                 <p>your final time is: <strong id="final-time">0.0</strong> seconds!</p>
                 <h3>top times</h3>
                 <div id="leaderboard-container">
@@ -157,7 +156,7 @@
                     </table>
                 </div>
                 <p class="leaderboard-prompt">want to add your time to the leaderboard?</p>
-                <p id="video-email-incentive" class="info-message" style="display:none;">(your video will be available to download after joining!)</p>
+                <p id="video-email-incentive" class="info-message" style="display:none;">(your video will be available to download after joining the leaderboard below!)</p>
                 
                 <div id="upload-status-container" style="width: 100%; margin-bottom: 10px;">
                     <p id="upload-status" class="info-message" style="margin-bottom: 5px;"></p>
@@ -172,14 +171,13 @@
                 <input type="email" id="user-email" placeholder="your.email@example.com" autocomplete="off">
                 <button id="btn-join-leaderboard">join leaderboard</button>
                 <p id="leaderboard-submit-status" class="info-message"></p>
-                <p class="info-message">(if not, simply close this page)</p>
             </div>
         </div>
 
         <!-- 4. Final Leaderboard Panel -->
         <div id="panel-final-leaderboard" class="panel">
              <div class="panel-content-container">
-                 <div class="logo-placeholder logo-fixed"><img src="./Asset 2.png" alt="your bar logo"></div>
+                 <div class="logo-placeholder"><img src="./Asset 2.png" alt="your bar logo"></div>
                  <h2 id="final-message">you're on the leaderboard!</h2>
                  
                  <!-- Video download section - only shown when video is available -->
@@ -206,7 +204,7 @@
         <!-- 5. Error Panel -->
         <div id="panel-error" class="panel">
             <div class="panel-content-container">
-                 <div class="logo-placeholder logo-fixed"><img src="./Asset 2.png" alt="your bar logo"></div>
+                 <div class="logo-placeholder"><img src="./Asset 2.png" alt="your bar logo"></div>
                  <h2 id="error-details" style="text-align:center;">oops! something went wrong.</h2>
                  <p id="error-details" style="text-align:center;">an error occurred.</p>
                  <button id="btn-error-back">go back to start</button>
@@ -548,7 +546,7 @@
             uploadProgressBar.style.animationPlayState = 'paused'; // Pause indeterminate animation
 
             // Set status in the finish panel
-            uploadStatus.textContent = "uploading video..."; 
+            uploadStatus.textContent = "processing your memory video..."; 
             uploadStatus.className = 'info-message'; 
             uploadStatus.style.display = 'block';
             btnJoinLeaderboard.disabled = true; // Disable join button on finish panel
@@ -585,7 +583,7 @@
                     stopRecordingCleanup(); // Cleanup stream etc. AFTER upload attempt
                     if (xhr.status >= 200 && xhr.status < 300) {
                         console.log("upload successful (xhr):", xhr.responseText);
-                        uploadStatus.textContent = "video upload complete!"; 
+                        uploadStatus.textContent = ""; 
                         uploadStatus.className = 'success-message';
                         videoEmailIncentive.style.display = 'block'; // Remind them they'll get the video
                     } else {
@@ -703,7 +701,6 @@
                      if (data.length === INITIAL_LEADERBOARD_LIMIT) {
                          // Add a "See more" button after the table
                          const showMoreBtn = document.createElement('button');
-                         showMoreBtn.textContent = 'Show more scores...';
                          showMoreBtn.className = 'show-more-btn';
                          showMoreBtn.onclick = loadMoreBlurredScores;
                          const container = document.getElementById('leaderboard-container');
@@ -752,7 +749,7 @@
 
         function handleJoinLeaderboard() {
              if (uploadInProgress) { 
-                leaderboardSubmitStatus.textContent = "please wait for video upload to complete..."; 
+                leaderboardSubmitStatus.textContent = "please wait for video processing to complete..."; 
                 leaderboardSubmitStatus.className = "info-message";
                 return; 
              }
