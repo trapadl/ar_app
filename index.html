@@ -22,14 +22,15 @@
         /* Video watermark */
         #video-watermark {
             position: absolute;
-            bottom: 10px;
-            right: 10px;
-            width: 60px;
+            bottom: 15px;
+            right: 15px;
+            width: 80px;
             height: auto;
             z-index: 5;
-            opacity: 0.7;
+            opacity: 0.8;
             pointer-events: none;
             display: none;
+            filter: drop-shadow(0 0 3px rgba(0, 0, 0, 0.7));
         }
 
         /* Panel Visibility & Layout */
@@ -135,7 +136,7 @@
                     <div id="quiz-instructions-overlay"></div>
                     <div id="quiz-question-overlay"></div>
                     <label for="quiz-answer-input">your answer:</label>
-                    <input type="text" id="quiz-answer-input" placeholder="type your answer">
+                    <input type="text" id="quiz-answer-input" placeholder="type your answer" autocomplete="off">
                     <p id="quiz-error" class="error-message"></p>
                     <button id="quiz-submit-answer">submit answer</button>
                 </div>
@@ -166,9 +167,9 @@
                 </div>
                 
                 <label for="user-name">name:</label>
-                <input type="text" id="user-name" placeholder="your name">
+                <input type="text" id="user-name" placeholder="your name" autocomplete="off">
                 <label for="user-email">email:</label>
-                <input type="email" id="user-email" placeholder="your.email@example.com">
+                <input type="email" id="user-email" placeholder="your.email@example.com" autocomplete="off">
                 <button id="btn-join-leaderboard">join leaderboard</button>
                 <p id="leaderboard-submit-status" class="info-message"></p>
                 <p class="info-message">(if not, simply close this page)</p>
@@ -217,9 +218,9 @@
 
         // --- QUIZ CONTENT ---
         const quizSteps = [
-            { instructions: `<p>first set of directions:</p><ol><li>face the main road.</li><li>turn 90 degrees to the right.</li><li>take about 20 steps towards the street corner ahead.</li></ol><p>now, look at the prominent building across the road.</p>`, question: "what is the name of the hotel you're looking at?", answer: "sofitel", autocompleteTrigger: "sof", autocompleteValue: "sofitel" },
-            { instructions: `<p>next directions:</p><ol><li>from where you answered the last question, turn 90 degrees to your right.</li><li>take about 20 steps until you reach the first alleyway entrance on your left.</li></ol><p>look at the sign or the general vibe of the laneway.</p>`, question: "what is the name of this colourful laneway?", answer: "cold chisel lane", autocompleteTrigger: "cold", autocompleteValue: "cold chisel lane" },
-            { instructions: `<p>final stretch:</p><ol><li>walk down the laneway (cold chisel lane).</li><li>enter the first set of clearly open doors you find on your right hand side.</li></ol><p>you should now be inside the bar!</p>`, question: "approach the bar staff and ask politely: \"what's the secret password?\"", answer: "negroni", autocompleteTrigger: null, autocompleteValue: null }
+            { instructions: `<p>first set of directions:</p><ol><li>face the main road.</li><li>turn 90 degrees to the right.</li><li>take about 20 steps towards the street corner ahead.</li></ol><p>now, look at the prominent building across the road.</p>`, question: "what is the name of the hotel you're looking at?", answer: "sofitel" },
+            { instructions: `<p>next directions:</p><ol><li>from where you answered the last question, turn 90 degrees to your right.</li><li>take about 20 steps until you reach the first alleyway entrance on your left.</li></ol><p>look at the sign or the general vibe of the laneway.</p>`, question: "what is the name of this colourful laneway?", answer: "cold chisel lane" },
+            { instructions: `<p>final stretch:</p><ol><li>walk down the laneway (cold chisel lane).</li><li>enter the first set of clearly open doors you find on your right hand side.</li></ol><p>you should now be inside the bar!</p>`, question: "approach the bar staff and ask politely: \"what's the secret password?\"", answer: "negroni" }
         ];
 
 
@@ -409,10 +410,8 @@
         function handleAnswerInput() {
             const currentStep = quizSteps[currentStepIndex];
             const input = quizAnswerInput.value.toLowerCase();
-            if (currentStep.autocompleteTrigger && currentStep.autocompleteValue && input === currentStep.autocompleteTrigger) {
-                quizAnswerInput.value = currentStep.autocompleteValue;
-            }
-             if (quizErrorMsg.textContent) quizErrorMsg.textContent = '';
+            // Removed autocomplete trigger functionality
+            if (quizErrorMsg.textContent) quizErrorMsg.textContent = '';
         }
 
         function finishQuiz() {
