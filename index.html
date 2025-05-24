@@ -1,959 +1,685 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>the trap. test</title>
-    <!-- Import Supabase Client Library -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
+    <meta name="theme-color" content="#FF1744">
+    <title>Secret Ingredient Hunt</title>
     <style>
-        /* Basic Reset & Dark Mode Theme */
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        html, body { height: 100%; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: #121212; color: #e0e0e0; overflow: hidden; }
-        body { display: flex; justify-content: center; align-items: flex-start; padding-top: 0; }
-        #app { width: 100%; max-width: 100%; height: 100%; max-height: 100vh; background-color: #1e1e1e; padding: 0; border: none; box-shadow: none; text-align: center; display: flex; flex-direction: column; position: relative; }
-
-        /* Logo Placeholder */
-        .logo-placeholder { width: 100px; height: auto; z-index: 15; opacity: 0.8; margin: 0 auto 15px auto; }
-        .logo-placeholder img { max-width: 100%; height: auto; display: block; }
-        .logo-fixed { position: absolute; top: 15px; left: 15px; }
-        
-        /* Video watermark */
-        #video-watermark {
-            position: absolute;
-            bottom: 15px;
-            right: 15px;
-            width: 80px;
-            height: auto;
-            z-index: 5;
-            opacity: 0.8;
-            pointer-events: none;
-            display: none;
-            filter: drop-shadow(0 0 3px rgba(0, 0, 0, 0.7));
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
         }
 
-        /* Panel Visibility & Layout */
-        .panel { display: none; flex-direction: column; align-items: center; width: 100%; height: 100%; position: absolute; top: 0; left: 0; background-color: #1e1e1e; overflow-y: auto; padding: 20px; justify-content: center; }
-        .panel.active { display: flex; z-index: 10; }
-        #panel-landing { justify-content: center; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0a0a0a;
+            color: #fff;
+            overflow-x: hidden;
+            height: 100vh;
+        }
 
-        /* --- Quiz Panel Conditional Layout --- */
-        #panel-quiz { padding: 0; background-color: transparent; justify-content: flex-start; }
-        #panel-quiz.no-video { background-color: #1e1e1e; padding: 20px; justify-content: center; }
-        #panel-quiz.no-video #quiz-content-overlay { position: relative; height: auto; padding: 0; justify-content: flex-start; pointer-events: auto; }
-        #panel-quiz.no-video .quiz-overlay-top { display: none; }
-        #panel-quiz.no-video .quiz-overlay-bottom { background-color: transparent; padding: 0; max-width: 100%; margin: 0; border-radius: 0; }
-        #panel-quiz.no-video #quiz-timer-overlay-container { display: block; text-align: center; font-size: 1.8em; font-weight: bold; color: #ffffff; margin-bottom: 20px; }
+        /* Neon text effect */
+        .neon {
+            text-shadow: 
+                0 0 10px #FF1744,
+                0 0 20px #FF1744,
+                0 0 30px #FF1744,
+                0 0 40px #FF1744;
+            animation: flicker 2s infinite;
+        }
 
-        /* Video Background */
-        #camera-feed { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; z-index: 1; }
+        @keyframes flicker {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.8; }
+        }
 
-        /* Quiz UI Overlay Container */
-        #quiz-content-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 2; display: none; /* Start hidden */ flex-direction: column; justify-content: space-between; padding: 15px; pointer-events: none; }
-        #quiz-content-overlay > * { pointer-events: auto; }
-        .quiz-overlay-top { display: flex; justify-content: space-between; align-items: flex-start; width: 100%; }
-        .quiz-overlay-bottom { display: flex; flex-direction: column; align-items: center; width: 100%; background-color: rgba(20, 20, 20, 0.85); padding: 15px; border-radius: 8px; max-width: 95%; margin: 0 auto; }
+        /* Landing page */
+        .landing {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            padding: 2rem;
+            text-align: center;
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a0a1a 100%);
+        }
 
-        /* Common Elements Styling */
-        h1, h2, h3, h4 { margin-bottom: 15px; color: #ffffff; }
-        p { margin-bottom: 15px; line-height: 1.6; text-align: left; width: 100%; color: #e0e0e0; }
-        ol, ul { text-align: left; margin-left: 20px; margin-bottom: 15px; color: #e0e0e0; padding-left: 0; }
-        li { margin-bottom: 8px; }
-        button { display: inline-block; background-color: #e0e0e0; color: #121212; padding: 10px 20px; border: 1px solid #e0e0e0; border-radius: 5px; font-size: 15px; font-weight: bold; cursor: pointer; margin-top: 10px; margin-bottom: 5px; transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease; width: 90%; max-width: 280px; }
-        button:hover { background-color: #ffffff; border-color: #ffffff; }
-        button:disabled { background-color: #444444; color: #888888; border-color: #444444; cursor: not-allowed; }
-        label { color: #e0e0e0; display: block; margin-bottom: 5px; text-align: left; width: 100%; font-size: 14px; }
-        input[type="text"], input[type="email"] { padding: 8px 10px; margin-bottom: 10px; border: 1px solid #555555; border-radius: 4px; width: 100%; font-size: 15px; background-color: #2c2c2c; color: #e0e0e0; }
-        input[type="text"]::placeholder, input[type="email"]::placeholder { color: #888888; }
-        .error-message { color: #ff8a80; margin-top: 5px; font-weight: bold; font-size: 14px; }
-        .info-message { color: #80cbc4; margin-top: 5px; font-size: 13px; }
-        .success-message { color: #a5d6a7; margin-top: 5px; font-weight: bold; font-size: 14px; }
+        .landing h1 {
+            font-size: 3rem;
+            margin-bottom: 1.5rem;
+            line-height: 1.2;
+        }
 
-        /* Quiz Overlay Element Styles */
-        #quiz-timer-overlay { font-size: 1.6em; font-weight: bold; color: #ffffff; background-color: rgba(0, 0, 0, 0.6); padding: 5px 10px; border-radius: 5px; }
-        #recording-indicator { background-color: #ff4d4d; color: white; padding: 3px 8px; border-radius: 10px; font-size: 12px; animation: pulse 1.5s infinite; }
-        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
-        #quiz-instructions-overlay { margin-bottom: 10px; max-height: 120px; overflow-y: auto; padding-right: 10px; }
-        #quiz-instructions-overlay p, #quiz-instructions-overlay ol { margin-bottom: 5px; font-size: 14px; line-height: 1.5; }
-        #quiz-question-overlay { font-weight: bold; margin-bottom: 10px; font-size: 1.0em; color: #ffffff; }
+        .landing p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+            margin-bottom: 3rem;
+            max-width: 500px;
+        }
 
-        /* Centering container for panels */
-        .panel-content-container { display: flex; flex-direction: column; align-items: center; width: 100%; max-width: 450px; padding: 20px; }
+        .btn-primary {
+            background: #FF1744;
+            color: white;
+            border: none;
+            padding: 1rem 3rem;
+            font-size: 1.2rem;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 20px rgba(255, 23, 68, 0.5);
+        }
 
-        /* Leaderboard Styles */
-        #leaderboard-container { margin-top: 15px; width: 100%; max-height: 250px; overflow-y: auto; border: 1px solid #444; background-color: #2c2c2c; }
-        /* Initially show only top 5 results */
-        .leaderboard-expanded { max-height: 400px; transition: max-height 0.3s ease-in-out; }
-        .show-more-btn { background: none; border: none; color: #80cbc4; font-size: 13px; cursor: pointer; padding: 5px; margin: 5px 0; width: auto; text-decoration: underline; }
-        #leaderboard-table { width: 100%; border-collapse: collapse; }
-        #leaderboard-table th, #leaderboard-table td { border: 1px solid #555; padding: 6px; text-align: left; color: #e0e0e0; font-size: 14px; }
-        #leaderboard-table th { background-color: #383838; position: sticky; top: 0; z-index: 1; color: #ffffff; }
-        #leaderboard-table td:nth-child(1), #leaderboard-table th:nth-child(1) { width: 15%; }
-        #leaderboard-table td:nth-child(3), #leaderboard-table th:nth-child(3) { width: 25%; }
-        .blurred-text { filter: blur(5px); opacity: 0.7; user-select: none; cursor: default; }
-        #leaderboard-table td.blurred-time { filter: blur(5px); opacity: 0.7; }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 30px rgba(255, 23, 68, 0.7);
+        }
 
-        #panel-finish .leaderboard-prompt { margin-top: 20px; font-weight: bold; }
-        #panel-finish #leaderboard-container { margin-bottom: 10px; }
-        #panel-finish .info-message { margin-top: 5px; }
-        #panel-finish button, #panel-final-leaderboard button, #panel-error button { width: 100%; }
+        /* Compass screen */
+        .compass-container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            background: #0a0a0a;
+        }
 
-        /* Upload Progress Bar Styles */
-        #upload-progress-container { width: 90%; max-width: 300px; height: 20px; background-color: #444; border-radius: 10px; overflow: hidden; margin: 15px 0; border: 1px solid #555; }
-        #upload-progress-bar { width: 0%; /* Start at 0% */ height: 100%; background-color: #80cbc4; transition: width 0.3s ease-out; background-image: linear-gradient(45deg, rgba(255,255,255,.15) 25%, transparent 25%, transparent 50%, rgba(255,255,255,.15) 50%, rgba(255,255,255,.15) 75%, transparent 75%, transparent); background-size: 40px 40px; animation: progress-bar-stripes 1s linear infinite; animation-play-state: paused; /* Start paused */ }
+        .compass-header {
+            padding: 1.5rem;
+            text-align: center;
+            background: rgba(255, 255, 255, 0.05);
+        }
 
+        .compass-header h2 {
+            font-size: 1.5rem;
+            color: #FF1744;
+        }
+
+        .compass-main {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        .compass {
+            width: 280px;
+            height: 280px;
+            position: relative;
+            border: 3px solid #FF1744;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(255, 23, 68, 0.1) 0%, transparent 70%);
+            box-shadow: 0 0 40px rgba(255, 23, 68, 0.5);
+        }
+
+        .compass-arrow {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            transition: transform 0.3s ease-out;
+        }
+
+        .arrow-shape {
+            position: absolute;
+            width: 0;
+            height: 0;
+            border-left: 20px solid transparent;
+            border-right: 20px solid transparent;
+            border-bottom: 80px solid #FF1744;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -100%);
+            filter: drop-shadow(0 0 10px rgba(255, 23, 68, 0.8));
+        }
+
+        .distance-display {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 3rem;
+            font-weight: bold;
+            text-shadow: 0 0 20px rgba(255, 23, 68, 0.8);
+        }
+
+        .compass-footer {
+            padding: 1.5rem;
+            background: rgba(255, 255, 255, 0.05);
+            text-align: center;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 1rem;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: #FF1744;
+            transition: width 0.3s;
+            box-shadow: 0 0 10px rgba(255, 23, 68, 0.8);
+        }
+
+        /* Badge modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.9);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .badge-modal {
+            background: #1a1a1a;
+            padding: 2rem;
+            border-radius: 20px;
+            text-align: center;
+            max-width: 90%;
+            animation: slideUp 0.5s;
+            border: 2px solid #FF1744;
+            box-shadow: 0 0 40px rgba(255, 23, 68, 0.5);
+        }
+
+        @keyframes slideUp {
+            from {
+                transform: translateY(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .badge-icon {
+            width: 200px;
+            height: 200px;
+            margin: 1rem 0;
+            animation: bounce 1s;
+        }
+
+        @keyframes bounce {
+            0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+            40% { transform: translateY(-30px); }
+            60% { transform: translateY(-15px); }
+        }
+
+        .confetti {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background: #FF1744;
+            animation: confettiFall 3s linear;
+        }
+
+        @keyframes confettiFall {
+            to {
+                transform: translateY(100vh) rotate(360deg);
+                opacity: 0;
+            }
+        }
+
+        /* Final form */
+        .final-screen {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 2rem;
+            text-align: center;
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a0a1a 100%);
+        }
+
+        .larry-illustration {
+            width: 200px;
+            height: 200px;
+            margin-bottom: 2rem;
+            animation: float 3s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        .email-form {
+            width: 100%;
+            max-width: 400px;
+        }
+
+        .email-input {
+            width: 100%;
+            padding: 1rem;
+            font-size: 1.1rem;
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid #FF1744;
+            border-radius: 10px;
+            color: white;
+            margin-bottom: 1rem;
+        }
+
+        .email-input::placeholder {
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        /* Voucher screen */
+        .voucher-screen {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 2rem;
+            text-align: center;
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a0a1a 100%);
+        }
+
+        .voucher-code {
+            font-family: 'Courier New', monospace;
+            font-size: 2rem;
+            background: rgba(255, 23, 68, 0.1);
+            padding: 1.5rem 2rem;
+            border-radius: 10px;
+            border: 2px solid #FF1744;
+            margin: 2rem 0;
+            letter-spacing: 2px;
+        }
+
+        .countdown {
+            font-size: 1.2rem;
+            opacity: 0.8;
+            margin-bottom: 2rem;
+        }
+
+        .share-buttons {
+            display: flex;
+            gap: 1rem;
+            margin-top: 2rem;
+        }
+
+        .share-btn {
+            padding: 0.8rem 1.5rem;
+            border: 2px solid #FF1744;
+            background: transparent;
+            color: #FF1744;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .share-btn:hover {
+            background: #FF1744;
+            color: white;
+        }
+
+        /* Loading state */
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: #FF1744;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
     </style>
 </head>
 <body>
-    <div id="app">
-        <!-- 1. Landing Panel -->
-        <div id="panel-landing" class="panel active">
-            <div class="panel-content-container">
-                <div class="logo-placeholder"><img src="./Asset 2.png" alt="your bar logo"></div>
-                <h4>best cocktail bar in adelaide 2024..</h4><br><br>
-                <p style="text-align: center;">follow the instructions and answer the questions to find something cool..</p>
-                <div style="margin: 15px 0; text-align: center;">
-                    <input type="checkbox" id="record-checkbox" style="vertical-align: middle;" checked>
-                    <label for="record-checkbox" style="display: inline; margin-left: 5px; max-width: none; text-align: center;">use your camera to record your experience - you know, for the memories.</label>
-                </div>
-                <p id="record-warning" class="info-message" style="font-size: 12px; text-align: center;">requires camera & microphone permission</p>
-                <button id="btn-start-quiz">start.</button>
-            </div>
-        </div>
-
-        <!-- 2. Quiz Panel -->
-        <div id="panel-quiz" class="panel">
-            <video id="camera-feed" playsinline autoplay muted style="display: none;"></video>
-            <!-- Add the missing watermark element -->
-            <img id="video-watermark" src="./Asset 2.png" alt="watermark">
-            <div id="quiz-timer-overlay-container" style="display: none;">time: <span id="timer-display-no-video">0.0</span>s</div>
-            <div id="quiz-content-overlay" style="display: none;">
-                <div class="quiz-overlay-top">
-                    <div id="quiz-timer-overlay">time: <span id="timer-display">0.0</span>s</div>
-                    <div id="recording-indicator" style="display: none;">● recording</div>
-                </div>
-                <div class="quiz-overlay-bottom">
-                    <div id="quiz-instructions-overlay"></div>
-                    <div id="quiz-question-overlay"></div>
-                    <label for="quiz-answer-input">your answer:</label>
-                    <input type="text" id="quiz-answer-input" placeholder="type your answer" autocomplete="off">
-                    <p id="quiz-error" class="error-message"></p>
-                    <button id="quiz-submit-answer">submit answer</button>
-                </div>
-            </div>
-        </div>
-
-        <!-- 3. Finish Panel -->
-        <div id="panel-finish" class="panel">
-            <div class="panel-content-container">
-                <div class="logo-placeholder"><img src="./Asset 2.png" alt="your bar logo"></div>
-                <h2>test complete!</h2>
-                <p>your final time is: <strong id="final-time">0.0</strong> seconds!</p>
-                <h3>top times</h3>
-                <div id="leaderboard-container">
-                    <table id="leaderboard-table">
-                        <thead> <tr><th>rank</th><th>name</th><th>time (s)</th></tr> </thead>
-                        <tbody id="leaderboard-body"><tr><td colspan="3" style="text-align:center;">loading scores...</td></tr></tbody>
-                    </table>
-                </div>
-                <p class="leaderboard-prompt">want to add your time to the leaderboard?</p>
-                <p id="video-email-incentive" class="info-message" style="display:none;">(your video will be available to view after joining the leaderboard below!)</p>
-                
-                <div id="upload-status-container" style="width: 100%; margin-bottom: 10px;">
-                    <p id="upload-status" class="info-message" style="margin-bottom: 5px;"></p>
-                    <div id="upload-progress-container" style="display: none;">
-                        <div id="upload-progress-bar"></div>
-                    </div>
-                </div>
-                
-                <label for="user-name">name:</label>
-                <input type="text" id="user-name" placeholder="your name" autocomplete="off">
-                <label for="user-email">email:</label>
-                <input type="email" id="user-email" placeholder="your.email@example.com" autocomplete="off">
-                <button id="btn-join-leaderboard">join leaderboard</button>
-                <p id="leaderboard-submit-status" class="info-message"></p>
-            </div>
-        </div>
-
-        <!-- 4. Final Leaderboard Panel -->
-        <div id="panel-final-leaderboard" class="panel">
-             <div class="panel-content-container">
-                 <div class="logo-placeholder"><img src="./Asset 2.png" alt="your bar logo"></div>
-                 <h2 id="final-message">you're on the leaderboard!</h2>
-                 
-                 <!-- Video player section - only shown when video is available -->
-                 <div id="video-download-container" style="width: 100%; margin: 15px 0; display: none; text-align: center;">
-                     <p class="success-message" style="text-align: center;">your video:</p>
-                     <video id="recorded-video-player" controls style="width: 100%; max-width: 400px; border-radius: 4px; margin: 10px 0;">
-                         Your browser doesn't support video playback.
-                     </video>
-                     <p class="info-message" style="text-align: center; font-size: 12px; margin-top: 5px;">
-                         (video available for 24 hours)
-                     </p>
-                 </div>
-                 
-                 <h3>top times</h3>
-                 <div id="leaderboard-container">
-                     <table id="leaderboard-table">
-                         <thead> <tr><th>rank</th><th>name</th><th>time (s)</th></tr> </thead>
-                         <tbody id="leaderboard-body-final"><tr><td colspan="3" style="text-align:center;">loading scores...</td></tr></tbody>
-                     </table>
-                 </div>
-              </div>
-        </div>
-
-        <!-- 5. Error Panel -->
-        <div id="panel-error" class="panel">
-            <div class="panel-content-container">
-                 <div class="logo-placeholder"><img src="./Asset 2.png" alt="your bar logo"></div>
-                 <h2 id="error-details" style="text-align:center;">oops! something went wrong.</h2>
-                 <p id="error-details" style="text-align:center;">an error occurred.</p>
-                 <button id="btn-error-back">go back to start</button>
-             </div>
-        </div>
-
-    </div> <!-- End #app -->
+    <div id="app"></div>
 
     <script>
-        /*****************************************
-         *           CONFIGURATION               *
-         *****************************************/
-         const SUPABASE_URL = "https://hdagjajchjxsyytdlqzi.supabase.co";
-         const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhkYWdqYWpjaGp4c3l5dGRscXppIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDMyOTE3NjEsImV4cCI6MjA1ODg2Nzc2MX0.8A5dhEKfDbUOeouvp_e32rMR-NUwnUjBTuP-8tEtsYU";
-         const INITIAL_LEADERBOARD_LIMIT = 5;
-         const EXTENDED_LEADERBOARD_LIMIT = 20;
-         const STORAGE_BUCKET_NAME = "racerecordings";
-         const EMAIL_FUNCTION_NAME = 'send-video-link'; // <<< Your Supabase Edge Function name
-
-        // --- QUIZ CONTENT ---
-        const quizSteps = [
-            { instructions: `<p>first set of directions:</p><ol><li>face the main road.</li><li>turn 90 degrees to the right.</li><li>take about 20 steps towards the street corner ahead.</li></ol><p>now, look at the prominent building across the road.</p>`, question: "what is the name of the hotel you're looking at?", answer: "sofitel" },
-            { instructions: `<p>next directions:</p><ol><li>from where you answered the last question, turn 90 degrees to your right.</li><li>take about 20 steps until you reach the first alleyway entrance on your left.</li></ol><p>look at the sign or the general vibe of the laneway.</p>`, question: "what is the name of this colourful laneway?", answer: ["cold chisel lane", "cold chisel ln", "coldchisel lane", "coldchisel ln"] },
-            { instructions: `<p>final stretch:</p><ol><li>walk down the laneway (cold chisel lane).</li><li>enter the first set of clearly open doors you find on your right hand side.</li></ol><p>you should now be inside the bar!</p>`, question: "approach the bar staff and ask politely: \"what's the secret password?\"", answer: "negroni" }
+        // Game configuration
+        const CHECKPOINTS = [
+            { id: 'tequila', name: 'Tequila', lat: -34.920000, lng: 138.600000, icon: '🥃' },
+            { id: 'lime', name: 'Lime', lat: -34.920200, lng: 138.600450, icon: '🍋' },
+            { id: 'chilli', name: 'Chilli', lat: -34.920350, lng: 138.600900, icon: '🌶️' },
+            { id: 'finish', name: 'Bar', lat: -34.920420, lng: 138.601000, icon: '🍹' }
         ];
+        const THRESHOLD_METERS = 5;
 
-
-        /*****************************************
-         *        DOM ELEMENT REFERENCES         *
-         *****************************************/
-        const app = document.getElementById('app');
-        const panels = { 
-            landing: document.getElementById('panel-landing'), 
-            quiz: document.getElementById('panel-quiz'), 
-            finish: document.getElementById('panel-finish'), 
-            finalLeaderboard: document.getElementById('panel-final-leaderboard'), 
-            error: document.getElementById('panel-error') 
+        // Game state
+        let gameState = {
+            currentScreen: 'landing',
+            currentCheckpoint: 0,
+            collectedIngredients: [],
+            playerLocation: null,
+            distance: null,
+            bearing: null,
+            compassHeading: null,
+            email: '',
+            voucherCode: null,
+            voucherExpiry: null
         };
-        const btnStartQuiz = document.getElementById('btn-start-quiz');
-        const recordCheckbox = document.getElementById('record-checkbox');
-        const recordWarning = document.getElementById('record-warning');
-        const cameraFeed = document.getElementById('camera-feed');
-        const videoWatermark = document.getElementById('video-watermark');
-        const quizContentOverlay = document.getElementById('quiz-content-overlay');
-        const quizTimerDisplay = document.getElementById('timer-display'); // In overlay
-        const quizTimerDisplayNoVideo = document.getElementById('timer-display-no-video'); // In non-video mode
-        const recordingIndicator = document.getElementById('recording-indicator');
-        const quizInstructionsDiv = document.getElementById('quiz-instructions-overlay');
-        const quizQuestionDiv = document.getElementById('quiz-question-overlay');
-        const quizAnswerInput = document.getElementById('quiz-answer-input');
-        const quizErrorMsg = document.getElementById('quiz-error');
-        const quizSubmitBtn = document.getElementById('quiz-submit-answer');
-        const uploadProgressContainer = document.getElementById('upload-progress-container');
-        const uploadProgressBar = document.getElementById('upload-progress-bar');
-        const finalTimeDisplay = document.getElementById('final-time');
-        const videoEmailIncentive = document.getElementById('video-email-incentive');
-        const userNameInput = document.getElementById('user-name');
-        const userEmailInput = document.getElementById('user-email');
-        const btnJoinLeaderboard = document.getElementById('btn-join-leaderboard');
-        const uploadStatus = document.getElementById('upload-status'); // Status shown on finish panel
-        const leaderboardSubmitStatus = document.getElementById('leaderboard-submit-status');
-        const leaderboardBodyBlurred = document.getElementById('leaderboard-body');
-        const finalMessage = document.getElementById('final-message');
-        const leaderboardBodyFinal = document.getElementById('leaderboard-body-final');
-        const errorDetails = document.getElementById('error-details');
-        const btnErrorBack = document.getElementById('btn-error-back');
 
+        // Utility functions
+        function haversine(lat1, lon1, lat2, lon2) {
+            const R = 6371e3; // Earth radius in meters
+            const φ1 = lat1 * Math.PI / 180;
+            const φ2 = lat2 * Math.PI / 180;
+            const Δφ = (lat2 - lat1) * Math.PI / 180;
+            const Δλ = (lon2 - lon1) * Math.PI / 180;
 
-        /*****************************************
-         *           APPLICATION STATE           *
-         *****************************************/
-        let supabaseClient = null; let currentPanel = 'landing'; let currentStepIndex = 0;
-        let startTime = null; let endTime = null; let finalTimeSeconds = 0; let timerInterval = null;
-        let userWantsToRecord = true; // Default ON
-        let mediaRecorder = null; let recordedChunks = []; let videoBlob = null;
-        let mediaStream = null; let isRecordingActive = false; let uploadInProgress = false;
-        let lastUploadedFilePath = null;
+            const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
+                      Math.cos(φ1) * Math.cos(φ2) *
+                      Math.sin(Δλ/2) * Math.sin(Δλ/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
 
-        /*****************************************
-         *         INITIALIZATION                *
-         *****************************************/
-        async function initializeApp() {
-            userWantsToRecord = recordCheckbox.checked;
-            recordWarning.style.display = userWantsToRecord ? 'block' : 'none';
-            if (!initializeSupabase()) return;
-            await logAppOpen();
-            setupEventListeners();
-            showPanel('landing');
-            console.log("quiz app initialized (upload panel, optional overlay).");
+            return R * c;
         }
 
-        function initializeSupabase() {
-            if (!SUPABASE_URL || !SUPABASE_ANON_KEY ) { console.error("config error: supabase credentials missing."); return false; }
-            if (typeof supabase === 'undefined' || !supabase.createClient) { console.error("runtime error: supabase library not loaded."); return false; }
-           try { supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY); console.log("supabase client initialized."); return true; }
-           catch (error) { console.error(`database connection failed: ${error.message}`); return false; }
-       }
+        function calcBearing(lat1, lon1, lat2, lon2) {
+            const φ1 = lat1 * Math.PI / 180;
+            const φ2 = lat2 * Math.PI / 180;
+            const Δλ = (lon2 - lon1) * Math.PI / 180;
 
-        function setupEventListeners() {
-            btnStartQuiz.addEventListener('click', handleStartQuizClick);
-            recordCheckbox.addEventListener('change', (e) => {
-                userWantsToRecord = e.target.checked;
-                recordWarning.style.display = userWantsToRecord ? 'block' : 'none';
-            });
-             quizSubmitBtn.addEventListener('click', handleAnswerSubmit);
-             quizAnswerInput.addEventListener('input', handleAnswerInput);
-             quizAnswerInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') handleAnswerSubmit(); });
-            btnJoinLeaderboard.addEventListener('click', handleJoinLeaderboard);
-            btnErrorBack.addEventListener('click', resetToLanding);
-            console.log("event listeners attached.");
+            const x = Math.sin(Δλ) * Math.cos(φ2);
+            const y = Math.cos(φ1) * Math.sin(φ2) - Math.sin(φ1) * Math.cos(φ2) * Math.cos(Δλ);
+
+            const θ = Math.atan2(x, y);
+            return (θ * 180 / Math.PI + 360) % 360;
         }
 
-        /*****************************************
-         *          UI / Panel Management        *
-         *****************************************/
-        function showPanel(panelName) {
-            console.log("showing panel:", panelName);
-            Object.values(panels).forEach(panel => panel.classList.remove('active'));
-            if (panels[panelName]) {
-                panels[panelName].classList.add('active');
-                currentPanel = panelName;
-                window.scrollTo(0, 0);
-            } else { console.error("panel not found:", panelName); panels.landing.classList.add('active'); currentPanel = 'landing'; }
+        function generateVoucher() {
+            const charset = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+            return 'SPICY-' + Array.from({length: 6}, () =>
+                charset[Math.floor(Math.random() * charset.length)]
+            ).join('');
         }
 
-        function showErrorPanel(message) {
-            stopTimer();
-            stopRecordingCleanup();
-            errorDetails.textContent = message;
-            showPanel('error');
+        // Screen components
+        function renderLanding() {
+            return `
+                <div class="landing">
+                    <h1 class="neon">Secret Ingredient Hunt</h1>
+                    <p>Oh no — Larry can't open the bar because he doesn't have the ingredients for his world-famous Spicy Margarita! Can you help Larry find them all?</p>
+                    <button class="btn-primary" onclick="startHunt()">Start Hunt</button>
+                </div>
+            `;
         }
 
-        /*****************************************
-         *           START & QUIZ LOGIC          *
-         *****************************************/
-         async function handleStartQuizClick() {
-            btnStartQuiz.disabled = true; btnStartQuiz.textContent = 'starting...';
-            userWantsToRecord = recordCheckbox.checked;
-            lastUploadedFilePath = null;
+        function renderCompass() {
+            const checkpoint = CHECKPOINTS[gameState.currentCheckpoint];
+            const progress = gameState.collectedIngredients.length;
+            const progressPercent = (progress / 3) * 100;
+            
+            return `
+                <div class="compass-container">
+                    <div class="compass-header">
+                        <h2>Find ${checkpoint.icon} ${checkpoint.name}</h2>
+                    </div>
+                    <div class="compass-main">
+                        <div class="compass">
+                            <div class="compass-arrow" style="transform: rotate(${gameState.bearing || 0}deg)">
+                                <div class="arrow-shape"></div>
+                            </div>
+                            <div class="distance-display">
+                                ${gameState.distance ? Math.round(gameState.distance) + 'm' : '...'}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="compass-footer">
+                        <p>Collected: ${progress} / 3</p>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: ${progressPercent}%"></div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
 
-            try {
-                if (userWantsToRecord) {
-                    await requestMediaPermissionsAndShowFeed();
-                    startRecordingInternal();
-                    startQuizGameplay(true); // Show video layout
-                } else {
-                    startQuizGameplay(false); // Show non-video layout
+        function renderBadgeModal(ingredient) {
+            // Create confetti
+            setTimeout(() => {
+                for (let i = 0; i < 50; i++) {
+                    const confetti = document.createElement('div');
+                    confetti.className = 'confetti';
+                    confetti.style.left = Math.random() * window.innerWidth + 'px';
+                    confetti.style.backgroundColor = ['#FF1744', '#FFD600', '#00E676'][Math.floor(Math.random() * 3)];
+                    confetti.style.animationDelay = Math.random() * 2 + 's';
+                    document.body.appendChild(confetti);
+                    setTimeout(() => confetti.remove(), 3000);
                 }
-            } catch (error) {
-                showErrorPanel(`failed to start: ${error.message}. check permissions or uncheck 'record'.`);
-                btnStartQuiz.disabled = false; btnStartQuiz.textContent = 'start.';
-            }
-         }
-
-        function startQuizGameplay(showVideo) {
-             console.log(`starting quiz gameplay (showVideo: ${showVideo})...`);
-             currentStepIndex = 0; finalTimeSeconds = 0;
-             quizTimerDisplay.textContent = '0.0'; quizTimerDisplayNoVideo.textContent = '0.0';
-             if (timerInterval) clearInterval(timerInterval); timerInterval = null; startTime = null;
-             uploadStatus.textContent = ''; uploadProgressBar.style.width = '0%'; // Reset progress bar
-             uploadProgressContainer.style.display = 'none';
-             recordingIndicator.style.display = isRecordingActive ? 'block' : 'none';
-
-             const quizPanel = panels.quiz;
-             const timerContainerNoVideo = document.getElementById('quiz-timer-overlay-container');
-             if (showVideo) {
-                 quizPanel.classList.remove('no-video'); quizPanel.classList.add('video-active');
-                 quizContentOverlay.style.display = 'flex';
-                 cameraFeed.style.display = 'block';
-                 videoWatermark.style.display = 'block'; // Show watermark for recording
-                 timerContainerNoVideo.style.display = 'none';
-                 if(cameraFeed.srcObject && cameraFeed.paused) { cameraFeed.play().catch(e => console.warn("Video play failed:", e)); }
-             } else {
-                 quizPanel.classList.add('no-video'); quizPanel.classList.remove('video-active');
-                 quizContentOverlay.style.display = 'flex';
-                 cameraFeed.style.display = 'none';
-                 videoWatermark.style.display = 'none'; // Hide watermark for non-video mode
-                 timerContainerNoVideo.style.display = 'block';
-             }
-
-             displayStep(currentStepIndex);
-             showPanel('quiz');
-             startTimer(showVideo);
-
-             btnStartQuiz.disabled = false; btnStartQuiz.textContent = 'start.';
-         }
-
-        function displayStep(index) {
-             if (index < 0 || index >= quizSteps.length) { showErrorPanel("internal error: invalid step index."); return; }
-             const step = quizSteps[index];
-             quizInstructionsDiv.innerHTML = step.instructions;
-             quizQuestionDiv.textContent = step.question;
-             quizAnswerInput.value = ''; quizErrorMsg.textContent = ''; quizAnswerInput.focus();
-             console.log(`displaying step ${index + 1}`);
-        }
-
-        function handleAnswerSubmit() {
-            const currentStep = quizSteps[currentStepIndex];
-            const userAnswer = quizAnswerInput.value.trim().toLowerCase();
-            
-            // Check if the answer is correct by comparing with any of the accepted variants
-            let isCorrect = false;
-            
-            if (Array.isArray(currentStep.answer)) {
-                // If the answer has multiple accepted variants
-                isCorrect = currentStep.answer.some(variant => userAnswer === variant.toLowerCase());
-            } else {
-                // If the answer is a single string
-                isCorrect = userAnswer === currentStep.answer.toLowerCase();
-            }
-            
-            if (isCorrect) {
-                quizErrorMsg.textContent = ''; currentStepIndex++;
-                if (currentStepIndex >= quizSteps.length) { finishQuiz(); }
-                else { displayStep(currentStepIndex); }
-            } else { quizErrorMsg.textContent = "that's not quite right, try again!"; }
-        }
-
-        function handleAnswerInput() {
-            const currentStep = quizSteps[currentStepIndex];
-            const input = quizAnswerInput.value.toLowerCase();
-            // Removed autocomplete trigger functionality
-            if (quizErrorMsg.textContent) quizErrorMsg.textContent = '';
-        }
-
-        function finishQuiz() {
-            console.log("quiz finished!");
-            stopTimer(); // Stop timer first
-            finalTimeDisplay.textContent = finalTimeSeconds.toFixed(1);
-            leaderboardSubmitStatus.textContent = '';
-            userNameInput.value = ''; userEmailInput.value = '';
-            quizContentOverlay.style.display = 'none'; // Hide overlay UI
-
-            if (isRecordingActive && mediaRecorder && mediaRecorder.state !== 'inactive') {
-                console.log("Stopping recording...");
-                mediaRecorder.stop(); // Triggers onstop
-                isRecordingActive = false;
-                recordingIndicator.style.display = 'none';
-                videoWatermark.style.display = 'none'; // Hide watermark when stopping recording
-            } else {
-                console.log("Not recording or already stopped.");
-            }
-            
-            if (mediaStream) { 
-                stopMediaStreamTracks(); 
-                if(cameraFeed) cameraFeed.style.display = 'none'; 
-            }
-            
-            showBlurredLeaderboard(); // Display the result screen
-        }
-
-        /*****************************************
-         *      MEDIA PERMISSIONS & RECORDING    *
-         *****************************************/
-        async function requestMediaPermissionsAndShowFeed() {
-             console.log("requesting media permissions for feed...");
-             if (mediaStream) { stopMediaStreamTracks(); }
-             try {
-                 mediaStream = await navigator.mediaDevices.getUserMedia({ 
-                     video: { facingMode: "user" }, // Use front-facing camera by default
-                     audio: true 
-                 });
-                 console.log("media permissions granted.");
-                 cameraFeed.srcObject = mediaStream;
-                 // Don't show video here, startQuizGameplay will
-             } catch (error) {
-                 console.error("error getting media stream:", error);
-                 mediaStream = null; throw new Error(error.message || "could not access camera/microphone");
-             }
-         }
-
-        function startRecordingInternal() {
-             if (!mediaStream) { console.error("cannot start recording, no media stream."); return; }
-             if (typeof MediaRecorder === 'undefined') { console.error("mediarecorder not supported."); return; }
-             try {
-                 // Show watermark when recording starts
-                 videoWatermark.style.display = 'block';
-                 
-                 const options = { mimeType: 'video/webm;codecs=vp8,opus' };
-                  if (!MediaRecorder.isTypeSupported(options.mimeType)) { options.mimeType = 'video/mp4'; }
-                  if (!MediaRecorder.isTypeSupported(options.mimeType)) { delete options.mimeType; }
-                 recordedChunks = []; mediaRecorder = new MediaRecorder(mediaStream, options);
-                 mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) recordedChunks.push(e.data); };
-                 mediaRecorder.onstop = handleRecordingStop;
-                 mediaRecorder.onerror = (e) => { console.error("recorder error:", e.error); stopRecordingCleanup(); showErrorPanel(`recording error: ${e.error.name}`); };
-                 mediaRecorder.start(1000); isRecordingActive = true; console.log("mediarecorder started.");
-             } catch (error) { console.error("failed to initialize mediarecorder:", error); isRecordingActive = false; }
-        }
-
-        function handleRecordingStop() {
-             console.log("recording stopped. chunks:", recordedChunks.length);
-             if (recordedChunks.length > 0) {
-                 const mimeType = mediaRecorder?.mimeType || recordedChunks[0]?.type || 'video/webm';
-                 videoBlob = new Blob(recordedChunks, { type: mimeType });
-                 showBlurredLeaderboard(); // Show the result screen first
-                 uploadRecording(); // Then start upload in the background, showing progress on the finish panel
-             } else {
-                 console.warn("no data recorded."); videoBlob = null;
-                 stopRecordingCleanup(); // Cleanup stream
-                 showBlurredLeaderboard(); // Skip upload, go to results
-             }
-             recordedChunks = []; // Clear chunks after creating blob or deciding not to upload
-         }
-
-        function stopRecordingCleanup() {
-             console.log("cleaning up recording state.");
-             if (mediaRecorder && mediaRecorder.state !== 'inactive') { try { mediaRecorder.stop(); } catch(e) {} }
-             stopMediaStreamTracks();
-             if(cameraFeed) { cameraFeed.style.display = 'none'; cameraFeed.srcObject = null; }
-             recordingIndicator.style.display = 'none';
-             videoWatermark.style.display = 'none'; // Hide watermark
-             isRecordingActive = false; mediaRecorder = null;
-             // recordedChunks already cleared
-             // Don't clear videoBlob here
-        }
-
-        function stopMediaStreamTracks() {
-             if (mediaStream) { mediaStream.getTracks().forEach(track => track.stop()); mediaStream = null; console.log("media stream tracks stopped."); }
-        }
-
-        /*****************************************
-         *        UPLOAD FUNCTION                *
-         *****************************************/
-        async function uploadRecording() {
-            if (!supabaseClient || !videoBlob || videoBlob.size === 0) {
-                console.log("upload skipped: no client or no video blob.");
-                stopRecordingCleanup(); showBlurredLeaderboard(); return;
-            }
-            if (!STORAGE_BUCKET_NAME) { console.error("storage bucket name not configured."); showErrorPanel("upload error: configuration missing."); stopRecordingCleanup(); return; }
-
-            uploadInProgress = true;
-            
-            // Show the progress bar on the finish panel
-            uploadProgressContainer.style.display = 'block';
-            uploadProgressBar.style.width = '0%'; // Start at 0
-            uploadProgressBar.style.animationPlayState = 'paused'; // Pause indeterminate animation
-
-            // Set status in the finish panel
-            uploadStatus.textContent = "processing your memory video..."; 
-            uploadStatus.className = 'info-message'; 
-            uploadStatus.style.display = 'block';
-            btnJoinLeaderboard.disabled = true; // Disable join button on finish panel
-
-            const fileName = `race-${Date.now()}.webm`;
-            console.log(`uploading ${fileName} to ${STORAGE_BUCKET_NAME}...`);
-            lastUploadedFilePath = fileName;
-
-            try {
-                const uploadUrl = `${SUPABASE_URL}/storage/v1/object/${STORAGE_BUCKET_NAME}/${fileName}`;
-                const token = SUPABASE_ANON_KEY;
-
-                const xhr = new XMLHttpRequest();
-                xhr.open('POST', uploadUrl, true);
-                xhr.setRequestHeader('Authorization', `Bearer ${token}`);
-                xhr.setRequestHeader('Content-Type', videoBlob.type);
-                xhr.setRequestHeader('apikey', token);
-
-                xhr.upload.onprogress = (event) => {
-                    if (event.lengthComputable) {
-                        const percentComplete = Math.round((event.loaded / event.total) * 100);
-                        uploadStatus.textContent = `uploading video (${percentComplete}%)...`;
-                        uploadProgressBar.style.width = `${percentComplete}%`; // Update progress bar width
-                    } else {
-                        // Cannot compute progress, show indeterminate state
-                        uploadStatus.textContent = `uploading video...`;
-                        uploadProgressBar.style.width = '100%'; // Fill bar
-                        uploadProgressBar.style.animationPlayState = 'running'; // Animate stripes
-                    }
-                };
-
-                xhr.onload = () => {
-                    uploadInProgress = false; // Upload attempt finished
-                    stopRecordingCleanup(); // Cleanup stream etc. AFTER upload attempt
-                    if (xhr.status >= 200 && xhr.status < 300) {
-                        console.log("upload successful (xhr):", xhr.responseText);
-                        uploadStatus.textContent = ""; 
-                        uploadStatus.className = 'success-message';
-                        videoEmailIncentive.style.display = 'block'; // Remind them they'll get the video
-                    } else {
-                        console.error("upload failed (xhr):", xhr.status, xhr.responseText);
-                        let errorMsg = `http status ${xhr.status}`;
-                        try { 
-                            const responseObj = JSON.parse(xhr.responseText);
-                            errorMsg = responseObj.message || errorMsg;
-                            
-                            // Check specifically for row-level security violations
-                            if (errorMsg.includes("row-level security")) {
-                                errorMsg = "permission denied - please ask bar staff for help";
-                            }
-                        } catch(e){}
-                        
-                        uploadStatus.textContent = `video upload failed: ${errorMsg.substring(0,50)}`; 
-                        uploadStatus.className = 'error-message';
-                        lastUploadedFilePath = null; // Clear path on failure
-                    }
-                    uploadProgressContainer.style.display = 'none';
-                    btnJoinLeaderboard.disabled = false; // Re-enable button on finish panel
-                };
-
-                xhr.onerror = () => {
-                    uploadInProgress = false; // Upload attempt finished
-                    stopRecordingCleanup(); // Cleanup stream etc. AFTER upload attempt
-                    console.error("upload failed (xhr network error)");
-                    uploadStatus.textContent = `video upload failed: network error`; 
-                    uploadStatus.className = 'error-message';
-                    lastUploadedFilePath = null;
-                    uploadProgressContainer.style.display = 'none';
-                    btnJoinLeaderboard.disabled = false; // Re-enable button on finish panel
-                };
-
-                xhr.send(videoBlob);
-                videoBlob = null; // Clear blob reference after sending (browser holds it)
-
-            } catch (error) {
-                console.error("upload setup failed:", error);
-                uploadStatus.textContent = `video upload failed: ${error.message.substring(0,50)}`; 
-                uploadStatus.className = 'error-message';
-                lastUploadedFilePath = null; 
-                uploadInProgress = false; 
-                uploadProgressContainer.style.display = 'none';
-                btnJoinLeaderboard.disabled = false;
-                stopRecordingCleanup();
-            }
-        }
-
-        /*****************************************
-         *           TIMER FUNCTIONS             *
-         *****************************************/
-        function startTimer(showVideo) {
-            if (timerInterval) return;
-            startTime = Date.now();
-            const targetDisplay = showVideo ? quizTimerDisplay : quizTimerDisplayNoVideo;
-            targetDisplay.textContent = '0.0';
-            timerInterval = setInterval(() => {
-                if (!startTime) { clearInterval(timerInterval); timerInterval = null; return; }
-                const elapsed = (Date.now() - startTime) / 1000;
-                const timeString = elapsed.toFixed(1);
-                quizTimerDisplay.textContent = timeString;
-                quizTimerDisplayNoVideo.textContent = timeString;
             }, 100);
-            console.log("timer started."); // Added confirmation log
+
+            return `
+                <div class="modal-overlay">
+                    <div class="badge-modal">
+                        <h2 class="neon">You found ${ingredient.name}!</h2>
+                        <div class="badge-icon">${ingredient.icon}</div>
+                        <button class="btn-primary" onclick="nextCheckpoint()">Next Ingredient</button>
+                    </div>
+                </div>
+            `;
         }
 
-        function stopTimer() {
-            if (timerInterval) {
-                clearInterval(timerInterval); timerInterval = null;
-                endTime = Date.now();
-                if (startTime) { finalTimeSeconds = (endTime - startTime) / 1000; } else { finalTimeSeconds = 0; }
-                const finalTimeString = finalTimeSeconds.toFixed(1);
-                quizTimerDisplay.textContent = finalTimeString; quizTimerDisplayNoVideo.textContent = finalTimeString;
-                console.log(`timer stopped. final time: ${finalTimeString}s`);
-                startTime = null;
+        function renderFinalForm() {
+            return `
+                <div class="final-screen">
+                    <div class="larry-illustration">🧑‍🍳</div>
+                    <h1 class="neon">Give Larry Your Ingredients!</h1>
+                    <p style="margin-bottom: 2rem;">You've collected all the ingredients! Now claim your reward.</p>
+                    <form class="email-form" onsubmit="submitEmail(event)">
+                        <input 
+                            type="email" 
+                            class="email-input" 
+                            placeholder="Enter your email"
+                            value="${gameState.email}"
+                            onchange="gameState.email = this.value"
+                            required
+                        />
+                        <button type="submit" class="btn-primary">
+                            Claim $10 Off
+                        </button>
+                    </form>
+                </div>
+            `;
+        }
+
+        function renderVoucher() {
+            const expiry = new Date(Date.now() + 4 * 60 * 60 * 1000); // 4 hours
+            const countdown = Math.floor((expiry - Date.now()) / 1000);
+            const hours = Math.floor(countdown / 3600);
+            const minutes = Math.floor((countdown % 3600) / 60);
+            
+            return `
+                <div class="voucher-screen">
+                    <h1 class="neon">Success! 🎉</h1>
+                    <p style="font-size: 1.2rem; margin-bottom: 1rem;">Show this code to your bartender:</p>
+                    <div class="voucher-code">${gameState.voucherCode}</div>
+                    <div class="countdown">Valid for ${hours}h ${minutes}m</div>
+                    <p style="opacity: 0.8;">$10 off any Spicy Margarita</p>
+                    <div class="share-buttons">
+                        <button class="share-btn" onclick="shareInstagram()">Share on Instagram</button>
+                        <button class="share-btn" onclick="shareTwitter()">Share on X</button>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Game logic
+        function startHunt() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        gameState.currentScreen = 'compass';
+                        startLocationTracking();
+                        render();
+                    },
+                    (error) => {
+                        alert('Location permission needed to play! Please enable location and refresh.');
+                    },
+                    { enableHighAccuracy: true }
+                );
+            } else {
+                alert('Geolocation not supported on this device.');
             }
         }
 
-        /*****************************************
-         *        LEADERBOARD FUNCTIONS          *
-         *****************************************/
-        async function showBlurredLeaderboard() {
-             if (!supabaseClient) { showErrorPanel("database connection lost."); return; }
-             leaderboardBodyBlurred.innerHTML = '<tr><td colspan="3" style="text-align:center;">loading scores...</td></tr>';
-             
-             // Only show video incentive if there's a recording but hide until upload completes
-             if (userWantsToRecord && !videoBlob) {
-                videoEmailIncentive.style.display = 'none';
-             }
-             
-             showPanel('finish'); // Show finish panel
+        function startLocationTracking() {
+            navigator.geolocation.watchPosition(
+                (position) => {
+                    gameState.playerLocation = {
+                        lat: position.coords.latitude,
+                        lng: position.coords.longitude
+                    };
+                    updateDistance();
+                },
+                (error) => console.error('Location error:', error),
+                { enableHighAccuracy: true, maximumAge: 0 }
+            );
 
-             try {
-                 let { data, error } = await supabaseClient.from('leaderboard')
-                     .select('name, time_in_seconds')
-                     .order('time_in_seconds', { ascending: true })
-                     .limit(INITIAL_LEADERBOARD_LIMIT);
-                 
-                 if (error) throw error;
-                 leaderboardBodyBlurred.innerHTML = '';
-                 
-                 if (data && data.length > 0) {
-                     data.forEach((entry, index) => {
-                         const row = leaderboardBodyBlurred.insertRow();
-                         row.insertCell().textContent = index + 1;
-                         const nameCell = row.insertCell();
-                         nameCell.textContent = entry.name ? entry.name.substring(0, 30) : '?????';
-                         const timeCell = row.insertCell();
-                         timeCell.textContent = parseFloat(entry.time_in_seconds).toFixed(1);
-                         timeCell.classList.add('blurred-text', 'blurred-time');
-                     });
-                     
-                     // Check if there might be more scores
-                     if (data.length === INITIAL_LEADERBOARD_LIMIT) {
-                         // Add a "See more" button after the table
-                         const showMoreBtn = document.createElement('button');
-                         showMoreBtn.textContent = 'show more scores...';
-                         showMoreBtn.className = 'show-more-btn';
-                         showMoreBtn.onclick = loadMoreBlurredScores;
-                         const container = document.getElementById('leaderboard-container');
-                         container.parentNode.insertBefore(showMoreBtn, container.nextSibling);
-                     }
-                 } else { 
-                     leaderboardBodyBlurred.innerHTML = '<tr><td colspan="3" style="text-align:center;">be the first!</td></tr>';
-                 }
-             } catch (error) { 
-                 console.error("error fetching leaderboard for blurring:", error); 
-                 leaderboardBodyBlurred.innerHTML = `<tr><td colspan="3" style="text-align:center; color: #ff8a80;">error loading scores</td></tr>`; 
-             }
+            // Device orientation for compass
+            if (window.DeviceOrientationEvent) {
+                window.addEventListener('deviceorientation', (e) => {
+                    if (e.alpha !== null) {
+                        gameState.compassHeading = e.alpha;
+                        updateCompassArrow();
+                    }
+                });
+            }
         }
-        
-        async function loadMoreBlurredScores() {
-            try {
-                const container = document.getElementById('leaderboard-container');
-                container.classList.add('leaderboard-expanded');
-                
-                let { data, error } = await supabaseClient.from('leaderboard')
-                    .select('name, time_in_seconds')
-                    .order('time_in_seconds', { ascending: true })
-                    .limit(EXTENDED_LEADERBOARD_LIMIT);
-                
-                if (error) throw error;
-                leaderboardBodyBlurred.innerHTML = '';
-                
-                if (data && data.length > 0) {
-                    data.forEach((entry, index) => {
-                        const row = leaderboardBodyBlurred.insertRow();
-                        row.insertCell().textContent = index + 1;
-                        const nameCell = row.insertCell();
-                        nameCell.textContent = entry.name ? entry.name.substring(0, 30) : '?????';
-                        const timeCell = row.insertCell();
-                        timeCell.textContent = parseFloat(entry.time_in_seconds).toFixed(1);
-                        timeCell.classList.add('blurred-text', 'blurred-time');
-                    });
+
+        function updateDistance() {
+            if (!gameState.playerLocation) return;
+            
+            const checkpoint = CHECKPOINTS[gameState.currentCheckpoint];
+            const distance = haversine(
+                gameState.playerLocation.lat,
+                gameState.playerLocation.lng,
+                checkpoint.lat,
+                checkpoint.lng
+            );
+            
+            gameState.distance = distance;
+            gameState.bearing = calcBearing(
+                gameState.playerLocation.lat,
+                gameState.playerLocation.lng,
+                checkpoint.lat,
+                checkpoint.lng
+            );
+            
+            // Check if within threshold
+            if (distance <= THRESHOLD_METERS && gameState.currentScreen === 'compass') {
+                if (gameState.currentCheckpoint < 3) {
+                    gameState.currentScreen = 'badge';
+                    gameState.collectedIngredients.push(checkpoint);
+                } else {
+                    gameState.currentScreen = 'final';
                 }
-                
-                // Remove the button after expanding
-                this.style.display = 'none';
-            } catch (error) {
-                console.error("error loading more scores:", error);
+                render();
+            } else if (gameState.currentScreen === 'compass') {
+                updateCompassArrow();
+                updateDistanceDisplay();
             }
         }
 
-        function handleJoinLeaderboard() {
-             if (uploadInProgress) { 
-                leaderboardSubmitStatus.textContent = "please wait for video processing to complete..."; 
-                leaderboardSubmitStatus.className = "info-message";
-                return; 
-             }
-             const name = userNameInput.value.trim(); 
-             const email = userEmailInput.value.trim();
-             
-             if (!name) {
-                leaderboardSubmitStatus.textContent = "please enter your name";
-                leaderboardSubmitStatus.className = "error-message";
-                userNameInput.focus();
-                return;
-             }
-             
-             if (!email || !/^\S+@\S+\.\S+$/.test(email)) { 
-                leaderboardSubmitStatus.textContent = "please enter a valid email address"; 
-                leaderboardSubmitStatus.className = "error-message";
-                userEmailInput.focus();
-                return; 
-             }
-             
-             saveLeaderboardEntry(name, email, finalTimeSeconds, leaderboardSubmitStatus, btnJoinLeaderboard);
-        }
-
-        async function saveLeaderboardEntry(name, email, time, statusElement, joinButton) {
-             if (!supabaseClient) { showErrorPanel("database connection lost."); return; }
-             statusElement.textContent = "saving score..."; 
-             statusElement.className = "info-message";
-             joinButton.disabled = true;
-             let entryId = null;
-             
-             // Construct bucket URL if we have a file path
-             let videoBucketUrl = null;
-             if (lastUploadedFilePath) {
-                 videoBucketUrl = `${SUPABASE_URL}/storage/v1/object/public/${STORAGE_BUCKET_NAME}/${lastUploadedFilePath}`;
-             }
-             
-             try {
-                 // Include the video bucket URL in the leaderboard entry
-                 const leaderboardEntry = { 
-                     name, 
-                     email, 
-                     time_in_seconds: time,
-                     video_url: videoBucketUrl
-                 };
-                 
-                 const { data: leaderboardData, error: leaderboardError } = await supabaseClient
-                     .from('leaderboard')
-                     .insert([leaderboardEntry])
-                     .select('id')
-                     .single();
-                     
-                 if (leaderboardError) {
-                     if (leaderboardError.message && leaderboardError.message.includes("row-level security")) {
-                         console.error("Row-level security policy error:", leaderboardError);
-                         throw new Error("access denied - please contact bar staff for help");
-                     }
-                     throw leaderboardError;
-                 }
-                 
-                 entryId = leaderboardData?.id; 
-                 console.log("leaderboard entry saved, id:", entryId);
-                 
-                 statusElement.textContent = "score saved!"; 
-                 statusElement.className = "success-message";
-                 
-                 showFinalLeaderboard(true);
-             } catch (error) {
-                 console.error("error saving leaderboard entry:", error);
-                 statusElement.textContent = `${error.message.substring(0,50)}`;
-                 statusElement.className = "error-message";
-                 joinButton.disabled = false;
-             }
-        }
-
-        async function showFinalLeaderboard(didJoin) {
-             if (!supabaseClient) { showErrorPanel("database connection lost."); return; }
-             finalMessage.textContent = didJoin ? "you're on the leaderboard!" : "top times";
-             
-             // Check if we have a video to show
-             const videoContainer = document.getElementById('video-download-container');
-             const videoPlayer = document.getElementById('recorded-video-player');
-             
-             if (lastUploadedFilePath && didJoin) {
-                 // Show video player
-                 videoContainer.style.display = 'block';
-                 
-                 // Construct video URL
-                 const videoUrl = `${SUPABASE_URL}/storage/v1/object/public/${STORAGE_BUCKET_NAME}/${lastUploadedFilePath}`;
-                 
-                 // Set source for video player
-                 videoPlayer.src = videoUrl;
-             } else {
-                 videoContainer.style.display = 'none';
-             }
-             
-             leaderboardBodyFinal.innerHTML = '<tr><td colspan="3" style="text-align:center;">loading scores...</td></tr>';
-             showPanel('finalLeaderboard');
-             try {
-                 let { data, error } = await supabaseClient.from('leaderboard')
-                     .select('name, time_in_seconds')
-                     .order('time_in_seconds', { ascending: true })
-                     .limit(INITIAL_LEADERBOARD_LIMIT);
-                 
-                 if (error) throw error;
-                 leaderboardBodyFinal.innerHTML = '';
-                 
-                 if (data && data.length > 0) {
-                     data.forEach((entry, index) => {
-                         const row = leaderboardBodyFinal.insertRow();
-                         row.insertCell().textContent = index + 1;
-                         row.insertCell().textContent = entry.name ? entry.name.substring(0, 30) : 'anonymous';
-                         row.insertCell().textContent = parseFloat(entry.time_in_seconds).toFixed(1);
-                     });
-                     
-                     // Check if there might be more scores
-                     if (data.length === INITIAL_LEADERBOARD_LIMIT) {
-                         // Add a "See more" button after the table
-                         const showMoreBtn = document.createElement('button');
-                         showMoreBtn.textContent = 'show more scores...';
-                         showMoreBtn.className = 'show-more-btn';
-                         showMoreBtn.onclick = loadMoreFinalScores;
-                         const container = document.querySelector('#panel-final-leaderboard #leaderboard-container');
-                         container.parentNode.insertBefore(showMoreBtn, container.nextSibling);
-                     }
-                 } else { 
-                     leaderboardBodyFinal.innerHTML = '<tr><td colspan="3" style="text-align:center;">be the first!</td></tr>'; 
-                 }
-             } catch (error) { 
-                 console.error("error fetching final leaderboard:", error); 
-                 leaderboardBodyFinal.innerHTML = `<tr><td colspan="3" style="text-align:center; color: #ff8a80;">error loading scores</td></tr>`; 
-             }
-        }
-        
-        async function loadMoreFinalScores() {
-            try {
-                const container = document.querySelector('#panel-final-leaderboard #leaderboard-container');
-                container.classList.add('leaderboard-expanded');
-                
-                let { data, error } = await supabaseClient.from('leaderboard')
-                    .select('name, time_in_seconds')
-                    .order('time_in_seconds', { ascending: true })
-                    .limit(EXTENDED_LEADERBOARD_LIMIT);
-                
-                if (error) throw error;
-                leaderboardBodyFinal.innerHTML = '';
-                
-                if (data && data.length > 0) {
-                    data.forEach((entry, index) => {
-                        const row = leaderboardBodyFinal.insertRow();
-                        row.insertCell().textContent = index + 1;
-                        row.insertCell().textContent = entry.name ? entry.name.substring(0, 30) : 'anonymous';
-                        row.insertCell().textContent = parseFloat(entry.time_in_seconds).toFixed(1);
-                    });
-                }
-                
-                // Remove the button after expanding
-                this.style.display = 'none';
-            } catch (error) {
-                console.error("error loading more scores:", error);
+        function updateCompassArrow() {
+            const arrow = document.querySelector('.compass-arrow');
+            if (arrow && gameState.bearing !== null) {
+                const rotation = gameState.compassHeading ? 
+                    (gameState.bearing - gameState.compassHeading + 360) % 360 : 
+                    gameState.bearing;
+                arrow.style.transform = `rotate(${rotation}deg)`;
             }
         }
 
-        /*****************************************
-         *        RESET & UTILITY FUNCTIONS      *
-         *****************************************/
-        function resetToLanding() {
-             stopTimer(); stopRecordingCleanup();
-             currentStepIndex = 0; startTime = null; endTime = null; finalTimeSeconds = 0;
-             quizAnswerInput.value = ''; quizErrorMsg.textContent = '';
-             userNameInput.value = ''; userEmailInput.value = ''; leaderboardSubmitStatus.textContent = '';
-             btnJoinLeaderboard.disabled = false;
-             leaderboardBodyBlurred.innerHTML = ''; leaderboardBodyFinal.innerHTML = '';
-             userWantsToRecord = recordCheckbox.checked; // Resync
-             recordWarning.style.display = userWantsToRecord ? 'block' : 'none';
-             uploadStatus.textContent = ''; 
-             uploadProgressContainer.style.display = 'none';
-             uploadInProgress = false; 
-             videoBlob = null; 
-             lastUploadedFilePath = null;
-             videoWatermark.style.display = 'none';
-             panels.quiz.classList.remove('no-video', 'video-active');
-             quizContentOverlay.style.display = 'none';
-
-             showPanel('landing');
-             console.log("app reset to landing.");
+        function updateDistanceDisplay() {
+            const display = document.querySelector('.distance-display');
+            if (display && gameState.distance !== null) {
+                display.textContent = Math.round(gameState.distance) + 'm';
+            }
         }
 
-        /*****************************************
-         *           INITIALIZE ON LOAD          *
-         *****************************************/
-        document.addEventListener('DOMContentLoaded', initializeApp);
-
-        // --- App Open Log ---
-        async function logAppOpen() {
-            if (!supabaseClient) { console.warn("Supabase client not ready, cannot log app open."); return; }
-            try {
-                const userAgent = navigator.userAgent || 'unknown';
-                const { error } = await supabaseClient.from('app_logs').insert({ user_agent: userAgent });
-                if (error) { console.error("Error logging app open event:", error.message); }
-                else { console.log("App open event logged successfully."); }
-            } catch (err) { console.error("Unexpected error during app open logging:", err.message); }
+        function nextCheckpoint() {
+            gameState.currentCheckpoint++;
+            gameState.currentScreen = 'compass';
+            render();
         }
 
+        function submitEmail(event) {
+            event.preventDefault();
+            
+            // Generate voucher
+            gameState.voucherCode = generateVoucher();
+            gameState.voucherExpiry = new Date(Date.now() + 4 * 60 * 60 * 1000);
+            
+            // In production, this would send to your backend
+            console.log('Voucher generated:', {
+                email: gameState.email,
+                code: gameState.voucherCode,
+                expiry: gameState.voucherExpiry
+            });
+            
+            gameState.currentScreen = 'voucher';
+            render();
+        }
+
+        function shareInstagram() {
+            // Instagram doesn't support direct URL sharing, so we copy to clipboard
+            const text = `Just completed the Secret Ingredient Hunt at Trap! 🍹 Use my code ${gameState.voucherCode} for $10 off!`;
+            navigator.clipboard.writeText(text);
+            alert('Text copied! Share it on your Instagram story 📸');
+        }
+
+        function shareTwitter() {
+            const text = `Just completed the Secret Ingredient Hunt at @TrapBar! 🍹 Ready for my Spicy Margarita! #SecretIngredientHunt`;
+            window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`, '_blank');
+        }
+
+        // Main render function
+        function render() {
+            const app = document.getElementById('app');
+            
+            switch (gameState.currentScreen) {
+                case 'landing':
+                    app.innerHTML = renderLanding();
+                    break;
+                case 'compass':
+                    app.innerHTML = renderCompass();
+                    break;
+                case 'badge':
+                    const ingredient = CHECKPOINTS[gameState.currentCheckpoint];
+                    app.innerHTML = renderCompass() + renderBadgeModal(ingredient);
+                    break;
+                case 'final':
+                    app.innerHTML = renderFinalForm();
+                    break;
+                case 'voucher':
+                    app.innerHTML = renderVoucher();
+                    break;
+            }
+        }
+
+        // Initialize app
+        render();
+
+        // PWA registration
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js').catch(() => {
+                    console.log('Running without service worker');
+                });
+            });
+        }
     </script>
-
 </body>
 </html>
